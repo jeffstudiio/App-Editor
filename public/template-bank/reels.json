@@ -1,0 +1,971 @@
+{
+ "version": "1.0.0",
+ "count": 8,
+ "templates": [
+  {
+   "id": "reels-hook-3tips",
+   "name": "هوک سه‌نکته‌ای",
+   "en": "HOOK 3 TIPS",
+   "cat": "reels",
+   "tags": [
+    "آموزش",
+    "ریلز",
+    "لیستی"
+   ],
+   "aspect": "9:16",
+   "desc": "هوک + سه نکتهٔ شماره‌دار + دعوت به سیو؛ فرمول رشد ریلز",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "کلیپ صحبت یا پس‌زمینه"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "عکس نکتهٔ ۱"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "عکس نکتهٔ ۲"
+    },
+    {
+     "id": "m4",
+     "kind": "image",
+     "label": "عکس نکتهٔ ۳"
+    },
+    {
+     "id": "m5",
+     "kind": "audio",
+     "label": "بیت ملایم لوف"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "۳ نکته‌ای که کسی نمی‌گه",
+     "size": "lg",
+     "y": 0.14
+    },
+    {
+     "id": "t2",
+     "sample": "۱",
+     "size": "md",
+     "y": 0.24,
+     "accent": "#e0a78f"
+    },
+    {
+     "id": "t3",
+     "sample": "۲",
+     "size": "md",
+     "y": 0.24,
+     "accent": "#e0a78f"
+    },
+    {
+     "id": "t4",
+     "sample": "۳",
+     "size": "md",
+     "y": 0.24,
+     "accent": "#e0a78f"
+    },
+    {
+     "id": "t5",
+     "sample": "سیو کن که یادت نره",
+     "size": "md",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.6,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.14
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.15,
+       "dur": 0.45,
+       "y": 0.24
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panR",
+     "slot": "m3",
+     "out": "slideR",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "stampIn",
+       "at": 0.15,
+       "dur": 0.45,
+       "y": 0.24
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "kenburnsIn",
+     "slot": "m4",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t4",
+       "anim": "stampIn",
+       "at": 0.15,
+       "dur": 0.45,
+       "y": 0.24
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t5",
+       "anim": "bounceIn",
+       "at": 0.25,
+       "dur": 0.55,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#c16a52",
+    "to": "#e0a78f",
+    "emoji": "⚡️"
+   },
+   "featured": true
+  },
+  {
+   "id": "reels-question-hook",
+   "name": "هوک سؤالی",
+   "en": "QUESTION HOOK",
+   "cat": "reels",
+   "tags": [
+    "مصاحبه",
+    "تاکینگ",
+    "پرسش"
+   ],
+   "aspect": "9:16",
+   "desc": "سؤال بزرگ وسط صفحه و جواب در ادامه؛ تعامل بالا با کامنت",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "صحبت رو به دوربین"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "بیت ملایم"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "چرا ریلزت دیده نمی‌شه؟",
+     "size": "xl",
+     "y": 0.4
+    },
+    {
+     "id": "t2",
+     "sample": "جوابش این‌جاست…",
+     "size": "md",
+     "y": 0.72
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.4,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "zoomBlur",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.25,
+       "dur": 0.6,
+       "y": 0.4
+      }
+     ]
+    },
+    {
+     "d": 3.2,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.6,
+       "y": 0.72
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.4
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.8,
+       "dur": 0.6,
+       "y": 0.72
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#9c453d",
+    "to": "#3a322e",
+    "emoji": "❓"
+   }
+  },
+  {
+   "id": "reels-fast15",
+   "name": "سریع ۱۵ ثانیه",
+   "en": "FAST 15",
+   "cat": "reels",
+   "tags": [
+    "ترند",
+    "سریع",
+    "کات‌روی‌ضرب"
+   ],
+   "aspect": "9:16",
+   "desc": "شش کات روی ضرب با ترنزیشن پانچ؛ فرمت ترند ۱۵ ثانیه‌ای",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "کلیپ ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "کلیپ ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "video",
+     "label": "کلیپ ۳"
+    },
+    {
+     "id": "m4",
+     "kind": "video",
+     "label": "کلیپ ۴"
+    },
+    {
+     "id": "m5",
+     "kind": "video",
+     "label": "کلیپ ۵"
+    },
+    {
+     "id": "m6",
+     "kind": "audio",
+     "label": "موزیک ترند"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "روی ضرب ببین 👀",
+     "size": "md",
+     "y": 0.12
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.12
+      }
+     ]
+    },
+    {
+     "d": 1.2,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.2,
+     "motion": "panR",
+     "slot": "m3",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.2,
+     "motion": "dollyIn",
+     "slot": "m4",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.2,
+     "motion": "handheld",
+     "slot": "m5",
+     "out": "whipL"
+    },
+    {
+     "d": 1.4,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "fade"
+    }
+   ],
+   "bpm": 120,
+   "art": {
+    "from": "#3a322e",
+    "to": "#c16a52",
+    "emoji": "🔥"
+   },
+   "featured": true
+  },
+  {
+   "id": "reels-checklist",
+   "name": "چک‌لیست ریلز",
+   "en": "CHECKLIST",
+   "cat": "reels",
+   "tags": [
+    "لیست",
+    "آموزش",
+    "کاربردی"
+   ],
+   "aspect": "9:16",
+   "desc": "تیک‌های پشت‌سرهم با اسلاید تمیز؛ آموزش مرحله‌به‌مرحله",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "کاور"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "قدم ۱"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "قدم ۲"
+    },
+    {
+     "id": "m4",
+     "kind": "image",
+     "label": "قدم ۳"
+    },
+    {
+     "id": "m5",
+     "kind": "audio",
+     "label": "لو-فای"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "چک‌لیست قبل از پست",
+     "size": "lg",
+     "y": 0.13
+    },
+    {
+     "id": "t2",
+     "sample": "✓ نور خوب",
+     "size": "md",
+     "y": 0.3
+    },
+    {
+     "id": "t3",
+     "sample": "✓ هوک سه‌ثانیه‌ای",
+     "size": "md",
+     "y": 0.45
+    },
+    {
+     "id": "t4",
+     "sample": "✓ کپشن با کلمه کلیدی",
+     "size": "md",
+     "y": 0.6
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "wipeUpTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.13
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "slideSide",
+       "at": 0.25,
+       "dur": 0.5,
+       "y": 0.3
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panR",
+     "slot": "m3",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "slideSide",
+       "at": 0.25,
+       "dur": 0.5,
+       "y": 0.45
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panL",
+     "slot": "m4",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t4",
+       "anim": "slideSide",
+       "at": 0.25,
+       "dur": 0.5,
+       "y": 0.6
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.13
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.6,
+       "dur": 0.5,
+       "y": 0.3
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#e0a78f",
+    "to": "#9c453d",
+    "emoji": "✅"
+   }
+  },
+  {
+   "id": "reels-mistakes",
+   "name": "اشتباه‌های رایج",
+   "en": "COMMON MISTAKES",
+   "cat": "reels",
+   "tags": [
+    "آموزش",
+    "برانگیزاننده",
+    "نقد"
+   ],
+   "aspect": "9:16",
+   "desc": "فرمول «اشتباه نکن!» با کات‌های تیز و متن قرمز هشدار",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "صحبت"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "مثال اشتباه"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "مثال درست"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "بیت تنش"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "این اشتباه رو نکن!",
+     "size": "xl",
+     "y": 0.15,
+     "accent": "#e0574a"
+    },
+    {
+     "id": "t2",
+     "sample": "اشتباه",
+     "size": "md",
+     "y": 0.3,
+     "accent": "#e0574a"
+    },
+    {
+     "id": "t3",
+     "sample": "درست",
+     "size": "md",
+     "y": 0.3,
+     "accent": "#8fd6a0"
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.8,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "glitchTr",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "shakeIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.15
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "handheld",
+     "slot": "m2",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "glitchIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.3
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "kenburnsIn",
+     "slot": "m3",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "popIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.3
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.15
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#6f2f2a",
+    "to": "#e0574a",
+    "emoji": "🚫"
+   }
+  },
+  {
+   "id": "reels-cta-follow",
+   "name": "CTA فالو",
+   "en": "FOLLOW CTA",
+   "cat": "reels",
+   "tags": [
+    "فالو",
+    "پایان‌بندی",
+    "رشد"
+   ],
+   "aspect": "9:16",
+   "desc": "پایان‌بندی پرقدرت با دکمهٔ فالو متحرک و ضرب",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "کلیپ پایانی"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "بیت هیپ‌هاپ"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "برای ادامه + را بزن",
+     "size": "xl",
+     "y": 0.5
+    },
+    {
+     "id": "t2",
+     "sample": "هر روز محتوای تازه",
+     "size": "sm",
+     "y": 0.62
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.6,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "bounceIn",
+       "at": 0.25,
+       "dur": 0.6,
+       "y": 0.5
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.5
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.5,
+       "dur": 0.5,
+       "y": 0.62
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "dollyOut",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.15,
+       "dur": 0.5,
+       "y": 0.5
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#c16a52",
+    "to": "#1d1817",
+    "emoji": "➕"
+   }
+  },
+  {
+   "id": "reels-bio-reel",
+   "name": "ریلز معرفی",
+   "en": "BIO REEL",
+   "cat": "reels",
+   "tags": [
+    "معرفی",
+    "پرتره",
+    "شخصی"
+   ],
+   "aspect": "9:16",
+   "desc": "معرفی خودت با سه برداشت سینمایی و متن مشخصات",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "برداشت ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "برداشت ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "پرترهٔ ثابت"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "ایندی آرام"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "سلام، من «اسم تو»ام",
+     "size": "lg",
+     "y": 0.2
+    },
+    {
+     "id": "t2",
+     "sample": "عکاس و قصه‌گو",
+     "size": "md",
+     "y": 0.78
+    },
+    {
+     "id": "t3",
+     "sample": "کار جدیدم رو ببین 👇",
+     "size": "sm",
+     "y": 0.86
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.6,
+       "y": 0.2
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "panR",
+     "slot": "m2",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "blurIn",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.78
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "kenburnsOut",
+     "slot": "m3",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.6,
+       "y": 0.86
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#9c453d",
+    "to": "#e0a78f",
+    "emoji": "🙋"
+   }
+  },
+  {
+   "id": "reels-mistake-fix",
+   "name": "قبل از پست",
+   "en": "PRE-POST",
+   "cat": "reels",
+   "tags": [
+    "کاربردی",
+    "سریع",
+    "ترفند"
+   ],
+   "aspect": "9:16",
+   "desc": "سه‌قدم ترفندی قبل از انتشار؛ سبک سبک و کاربردی",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "اسکرین‌شات اپ"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "نتیجه"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "چیلر"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "قبل از پست اینو چک کن",
+     "size": "md",
+     "y": 0.15
+    },
+    {
+     "id": "t2",
+     "sample": "قدم ۱",
+     "size": "sm",
+     "y": 0.3
+    },
+    {
+     "id": "t3",
+     "sample": "قدم ۲",
+     "size": "sm",
+     "y": 0.3
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "typewriter",
+       "at": 0.3,
+       "dur": 0.9,
+       "y": 0.15
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panD",
+     "slot": "m1",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.3
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panD",
+     "slot": "m2",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "stampIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.3
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "kenburnsIn",
+     "slot": "m2",
+     "out": "dipBlack"
+    }
+   ],
+   "art": {
+    "from": "#2d2725",
+    "to": "#e0a78f",
+    "emoji": "📌"
+   }
+  }
+ ]
+}

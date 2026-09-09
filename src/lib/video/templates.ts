@@ -1,0 +1,581 @@
+// Ready-made edit templates — 100% original recipes (no third-party assets).
+// Each template maps onto the editor's existing primitives: aspect, filter
+// preset, caption preset, clip transitionIn, title text and editorial tips.
+import type { AspectId, TransitionType } from "./types";
+
+export interface EditTemplate {
+  id: string;
+  name: string;
+  emoji: string;
+  desc: string;
+  aspect: AspectId;
+  filterPresetId: string;
+  captionPresetId: string;
+  transition: { type: TransitionType; dur: number };
+  title: string | null;
+  titleDur: number;
+  musicMood: string;
+  tips: string[];
+}
+
+export const EDIT_TEMPLATES: EditTemplate[] = [
+  {
+    id: "product-reel",
+    name: "ریلز محصول",
+    emoji: "🛍️",
+    desc: "۱۵ ثانیه، تمیز و روشن برای معرفی کالا؛ هوک از فریم اول.",
+    aspect: "9:16",
+    filterPresetId: "clean",
+    captionPresetId: "minimal",
+    transition: { type: "fade", dur: 0.3 },
+    title: null,
+    titleDur: 2.5,
+    musicMood: "آپ‌بیت کوتاه با درام تمیز",
+    tips: [
+      "اولین کلیپ: نزدیک‌ترین و پرجزئیات‌ترین نمای محصول (هوک ۱ ثانیه‌ای).",
+      "کلیپ‌ها را زیر ۲ ثانیه نگه دار؛ ریتم تند نگه‌داشتنی است.",
+      "قیمت/CTA را با ابزار متن روی کلیپ آخر بگذار.",
+    ],
+  },
+  {
+    id: "before-after",
+    name: "قبل / بعد",
+    emoji: "🔄",
+    desc: "ترفند مکث و پرش سیاه برای نمایش تحول؛ بالاترین نرخ سیو.",
+    aspect: "9:16",
+    filterPresetId: "none",
+    captionPresetId: "impact",
+    transition: { type: "black", dur: 0.35 },
+    title: "صبر کن تا آخر ببینی 👀",
+    titleDur: 2,
+    musicMood: "بیلدآپ با درام، کات روی بیت",
+    tips: [
+      "کلیپ «قبل» کوتاه‌تر از «بعد» باشد (۱ ثانیه در برابر ۴ ثانیه).",
+      "زاویه و قاب دو کلیپ را یکسان بگیر تا تفاوت منحجر به‌چشم بیاید.",
+      "متن «قبل» و «بعد» را جداگانه روی هر کلیپ بگذار.",
+    ],
+  },
+  {
+    id: "cinematic-teaser",
+    name: "تیزر سینمایی",
+    emoji: "🎞️",
+    desc: "حس فیلم؛ کنتراست بالا، کات‌های آهسته، تیتر پایانی.",
+    aspect: "16:9",
+    filterPresetId: "cinema",
+    captionPresetId: "classic",
+    transition: { type: "fade", dur: 0.9 },
+    title: null,
+    titleDur: 3.5,
+    musicMood: "امبینت با ساب‌بیس، بدون درام شلوغ",
+    tips: [
+      "سه نمای طولانی (۳+ ثانیه) با حرکت خیلی آرام دوربین.",
+      "لحن رنگی را یکدست نگه دار؛ از فیلترهای شاد استفاده نکن.",
+      "تیتر پایانی (اسم برند/تاریخ) را با متن Lalezar بزرگ بگذار.",
+    ],
+  },
+  {
+    id: "talking-head",
+    name: "توکینگ‌هد + زیرنویس",
+    emoji: "🗣️",
+    desc: "صحبت رو در دوربین با زیرنویس پررنگ؛ مناسب آموزش و توضیح.",
+    aspect: "9:16",
+    filterPresetId: "clean",
+    captionPresetId: "impact",
+    transition: { type: "none", dur: 0 },
+    title: null,
+    titleDur: 2,
+    musicMood: "بدون موزیک یا خیلی کِش (تا صدای گوینده تمیز بماند)",
+    tips: [
+      "بعد از اعمال، از ابزار «زیرنویس» تشخیص خودکار گفتار را بزن.",
+      "۳ ثانیه اول: نتیجه یا ادعای اصلی را بگو، بعد توضیح بده.",
+      "هر ۴-۵ ثانیه یک پرش کوچک قاب (زوم یا تغییر زاویه) نگاه را زنده نگه می‌دارد.",
+    ],
+  },
+  {
+    id: "neon-night",
+    name: "نئون شب",
+    emoji: "💜",
+    desc: "پارتی، کافه شب و فضای نئونی؛ اشباع بالا با ترنزیشن زوم.",
+    aspect: "9:16",
+    filterPresetId: "neon",
+    captionPresetId: "neon",
+    transition: { type: "zoom", dur: 0.45 },
+    title: null,
+    titleDur: 2.5,
+    musicMood: "الکترونیک شبانه با ضربان پیوسته",
+    tips: [
+      "کات‌ها را روی بیت موزیک بزن (کلیپ‌های ۱.۵ ثانیه‌ای).",
+      "نورهای نئون در منبع تصویر باشند؛ فیلتر جای نور را نمی‌گیرد.",
+      "متن‌ها را با رنگ گرادیان نئون بگذار تا با فضا بخواند.",
+    ],
+  },
+  {
+    id: "daily-vlog",
+    name: "ولاگ روزمره",
+    emoji: "🌤️",
+    desc: "حس گرم و خودمانی؛ گرمای غروب با کات‌های سواید.",
+    aspect: "9:16",
+    filterPresetId: "warmglow",
+    captionPresetId: "lalezar",
+    transition: { type: "slide", dur: 0.5 },
+    title: "یه روز از زندگی من ☀️",
+    titleDur: 3,
+    musicMood: "ایندي ملایم با گیتار",
+    tips: [
+      "کلیپ‌های دست‌آزاد را با لرزش‌گیر («ابزار کلیپ → لرزش‌گیر») صاف کن.",
+      "روایت داشته باش: صبح → انجام کار → نتیجه؛ حوصله‌سربری ممنوع.",
+      "متن‌های کوتاه فارسی روی هر صحنه حس دفتر خاطرات می‌دهد.",
+    ],
+  },
+  // ── gallery expansion (22 more original recipes) ──
+  {
+    id: "fashion-look",
+    name: "لوک فشن",
+    emoji: "👗",
+    desc: "کات سریع روی تکان‌دادن لباس؛ نعنایی خنک با کات روی بیت.",
+    aspect: "9:16",
+    filterPresetId: "mint",
+    captionPresetId: "lalezar",
+    transition: { type: "slide", dur: 0.35 },
+    title: null,
+    titleDur: 2,
+    musicMood: "بیت فشن اروپایی با هیت‌محور",
+    tips: [
+      "لحظه‌ی تکان‌خوردن لباس/مو را با سرعت ۰.۵x هایلایت کن.",
+      "هر لوک فقط ۱ تا ۱.۵ ثانیه؛ ریتم از شلوغی مهم‌تر است.",
+    ],
+  },
+  {
+    id: "sports-pump",
+    name: "انرژی ورزشی",
+    emoji: "🏋️",
+    desc: "کنتراست بالا و کات‌های تند برای تمرین و انفجار انرژی.",
+    aspect: "9:16",
+    filterPresetId: "noir",
+    captionPresetId: "impact",
+    transition: { type: "zoom", dur: 0.3 },
+    title: null,
+    titleDur: 2,
+    musicMood: "گیم‌میوزیک قدرتی با درام سنگین",
+    tips: [
+      "لحظه‌ی اوج حرکت (اسکوات، پرش) را اسلوموشن ۰.۵x کن.",
+      "شمارنده‌ی تمرین با متن بزرگ گوشه‌ی کادر جذابیت می‌دهد.",
+    ],
+  },
+  {
+    id: "travel-diary",
+    name: "دفتر سفر",
+    emoji: "✈️",
+    desc: "نماهای باز با گرما و ترنزیشن سواید؛ حس ژورنال مسافت.",
+    aspect: "16:9",
+    filterPresetId: "warmglow",
+    captionPresetId: "classic",
+    transition: { type: "slide", dur: 0.6 },
+    title: "سفر به… ✈️",
+    titleDur: 2.5,
+    musicMood: "ایندي سفر با ساز کوبه‌ای",
+    tips: [
+      "برای هر شهر یک تیتر کوچک بگذار (ابزار متن).",
+      "نمای هوایی/پنوراما را طولانی‌تر از بقیه نگه دار.",
+    ],
+  },
+  {
+    id: "birthday-pop",
+    name: "تولد شاد",
+    emoji: "🎂",
+    desc: "شاد و رنگی با زوم‌های بامزه؛ مناسب متولد روز.",
+    aspect: "9:16",
+    filterPresetId: "clean",
+    captionPresetId: "impact",
+    transition: { type: "zoom", dur: 0.4 },
+    title: "تولدت مبارک 🎂",
+    titleDur: 3,
+    musicMood: "پاپ شاد جشن‌وار",
+    tips: [
+      "عکس‌های قدیمی → جدید مرتب کن؛ پایان با امسال.",
+      "متن آرزو روی کلیپ آخر با فونت لاله‌زار.",
+    ],
+  },
+  {
+    id: "love-remix",
+    name: "میکس عاشقانه",
+    emoji: "💗",
+    desc: "محو قدیمی و کات‌های آروم؛ برای دوتایی‌ها.",
+    aspect: "9:16",
+    filterPresetId: "faded",
+    captionPresetId: "minimal",
+    transition: { type: "fade", dur: 0.8 },
+    title: null,
+    titleDur: 3,
+    musicMood: "بالاد آروم با پیانو",
+    tips: [
+      "دو نمای روبه‌روی هم را fade بده؛ حس آه کش می‌دهد.",
+      "زیرنویس مینیمال، بدون شلوغی.",
+    ],
+  },
+  {
+    id: "motivation-grit",
+    name: "انگیزشی جدی",
+    emoji: "🔥",
+    desc: "سیاه‌وسفید پرکنتراست با پرش از سیاهی؛ متن‌محور.",
+    aspect: "9:16",
+    filterPresetId: "noir",
+    captionPresetId: "impact",
+    transition: { type: "black", dur: 0.4 },
+    title: "سخت‌ترین مسیرها…",
+    titleDur: 3,
+    musicMood: "امبینت حماسی با ساب‌بیس",
+    tips: [
+      "هر جمله‌ی انگیزشی یک کلیپ؛ کات از سیاهی بین جمله‌ها.",
+      "کلیپ آخر روشن‌تر باشد (پیام امید).",
+    ],
+  },
+  {
+    id: "food-closeup",
+    name: "کلوزآپ غذا",
+    emoji: "🍜",
+    desc: "گرمای رستوران و کلوزآپ‌های چسبنده؛ آپتیزمال برای کافه.",
+    aspect: "9:16",
+    filterPresetId: "warmglow",
+    captionPresetId: "lalezar",
+    transition: { type: "fade", dur: 0.35 },
+    title: null,
+    titleDur: 2,
+    musicMood: "لانژ آروم کافه‌ای",
+    tips: [
+      "لحظه‌ی پنیرکش/بریدن را اسلوموشن کن — هوک اصلی.",
+      "اسم غذا با متن لاله‌زار روی کلوزآپ.",
+    ],
+  },
+  {
+    id: "gaming-hype",
+    name: "هایپ گیمینگ",
+    emoji: "🎮",
+    desc: "نئون و زوم تند برای گیم‌پلی و کیل‌ها.",
+    aspect: "9:16",
+    filterPresetId: "neon",
+    captionPresetId: "impact",
+    transition: { type: "zoom", dur: 0.25 },
+    title: null,
+    titleDur: 2,
+    musicMood: "تله‌پاور الکترونیک",
+    tips: [
+      "کیل‌ها را زیر ۱.۵ ثانیه کات بزن.",
+      "امتیاز/نتیجه را با متن ایمپکت آخر بگذار.",
+    ],
+  },
+  {
+    id: "lyrics-cards",
+    name: "کارت متن آهنگ",
+    emoji: "🎵",
+    desc: "تک‌ستون سیاه با زیرنویس نئونی؛ سبک ادیت‌های ترند.",
+    aspect: "9:16",
+    filterPresetId: "noir",
+    captionPresetId: "neon",
+    transition: { type: "fade", dur: 0.6 },
+    title: null,
+    titleDur: 3,
+    musicMood: "اسلو ریموو با درام خفه",
+    tips: [
+      "متن‌ها را با ابزار زیرنویس دستی تایپ کن (بدون ASR).",
+      "هر جمله حداقل ۲ ثانیه روی صفحه بماند.",
+    ],
+  },
+  {
+    id: "family-moments",
+    name: "لحظه‌های خانوادگی",
+    emoji: "👨‍👩‍👧",
+    desc: "گرم و صمیمی با تیتر لاله‌زار؛ آلبوم متحرک.",
+    aspect: "4:5",
+    filterPresetId: "warmglow",
+    captionPresetId: "lalezar",
+    transition: { type: "slide", dur: 0.55 },
+    title: "خاطره‌های خوب ❤️",
+    titleDur: 3,
+    musicMood: "پیانو گرم خانوادگی",
+    tips: [
+      "عکس‌ها را ۲.۵ ثانیه‌ای بچین؛ دستی قدیمی‌ترها اول.",
+      "تاریخ‌ها را با متن کوچک گوشه بنویس.",
+    ],
+  },
+  {
+    id: "friends-recap",
+    name: "رکاپ دوستانه",
+    emoji: "🤝",
+    desc: "کات‌های شاد و سواید؛ جمع‌بندی باورنکردنی یک روز.",
+    aspect: "9:16",
+    filterPresetId: "clean",
+    captionPresetId: "impact",
+    transition: { type: "slide", dur: 0.4 },
+    title: "بهترین روز با بچه‌ها 🤟",
+    titleDur: 2.5,
+    musicMood: "پاپ آپ‌تِمپو شاد",
+    tips: [
+      "خنده‌ها و لحظه‌های خراب‌شده را حذف نکن — طلایی‌اند.",
+      "پایان با عکس گروهی ثابت ۲ ثانیه.",
+    ],
+  },
+  {
+    id: "comedy-zoom",
+    name: "طنز زوم‌دار",
+    emoji: "😂",
+    desc: "زوم‌های ناگهانی روی مکث‌ها؛ فرمول وایرال کمدی.",
+    aspect: "9:16",
+    filterPresetId: "none",
+    captionPresetId: "impact",
+    transition: { type: "zoom", dur: 0.2 },
+    title: null,
+    titleDur: 2,
+    musicMood: "بدون موزیک یا افکت کمدی",
+    tips: [
+      "مکث قبل از پانچ‌لاین = جادوی خنده؛ فریز فریم بزن.",
+      "زوم ۱۳۰٪ روی صورت در لحظه‌ی شوک.",
+    ],
+  },
+  {
+    id: "unboxing",
+    name: "آنباکسینگ",
+    emoji: "📦",
+    desc: "تمیز و روشن؛ بازکردن جعبه با ریتم دست.",
+    aspect: "9:16",
+    filterPresetId: "clean",
+    captionPresetId: "minimal",
+    transition: { type: "fade", dur: 0.3 },
+    title: null,
+    titleDur: 2,
+    musicMood: "بیت مینیمال تمیز",
+    tips: [
+      "لحظه‌ی بازشدن جعبه اسلوموشن ۰.۷x.",
+      "جزئیات محصول را کلوزآپ و با متن کوچک معرفی کن.",
+    ],
+  },
+  {
+    id: "study-focus",
+    name: "مطالعه و تمرکز",
+    emoji: "📚",
+    desc: "آرام و بدون شلوغی؛ تایم‌لپس درس و کار.",
+    aspect: "9:16",
+    filterPresetId: "mint",
+    captionPresetId: "minimal",
+    transition: { type: "none", dur: 0 },
+    title: "روز ۱ از ۳۰ 📖",
+    titleDur: 2.5,
+    musicMood: "لوفای آرام بدون درام",
+    tips: [
+      "سرعت ۴x برای تایم‌لپس مطالعه.",
+      "متن روزشمار گوشه‌ی کادر حس چالش می‌دهد.",
+    ],
+  },
+  {
+    id: "recipe-steps",
+    name: "مراحل دستور پخت",
+    emoji: "🥘",
+    desc: "گام‌به‌گام با سواید؛ آشپزی که آب می‌خورد.",
+    aspect: "9:16",
+    filterPresetId: "warmglow",
+    captionPresetId: "minimal",
+    transition: { type: "slide", dur: 0.45 },
+    title: "دستور امروز 🥘",
+    titleDur: 2.5,
+    musicMood: "آکوستیک گرم آشپزخانه‌ای",
+    tips: [
+      "هر مرحله یک کلیپ + متن «۱) …»، «۲) …».",
+      "نمای نهایی غذا ۳ ثانیه با موزیک فِید.",
+    ],
+  },
+  {
+    id: "street-style",
+    name: "استایل خیابانی",
+    emoji: "🧢",
+    desc: "نوآر شهری با سواید تند؛ وایب استریت.",
+    aspect: "9:16",
+    filterPresetId: "noir",
+    captionPresetId: "neon",
+    transition: { type: "slide", dur: 0.35 },
+    title: null,
+    titleDur: 2,
+    musicMood: "هیپ‌هاپ بیت‌محور",
+    tips: [
+      "کف‌ها و جزئیات پوشش را کلوزآپ کن.",
+      "نمای تمام‌قد را با سرعت ۱.۲x بده تا سنگین نشود.",
+    ],
+  },
+  {
+    id: "car-reveal",
+    name: "رونمایی ماشین",
+    emoji: "🚗",
+    desc: "سینمایی با کات آهسته و زوم؛ شیک و لوکس.",
+    aspect: "16:9",
+    filterPresetId: "cinema",
+    captionPresetId: "impact",
+    transition: { type: "zoom", dur: 0.6 },
+    title: null,
+    titleDur: 3,
+    musicMood: "تله سینمایی با ساب بیس",
+    tips: [
+      "پن آرام روی بدنه؛ انعکاس نور دوست تو است.",
+      "نمای رانندگی آخرین کلیپ باشد.",
+    ],
+  },
+  {
+    id: "pet-cute",
+    name: "حیوانات بامزه",
+    emoji: "🐱",
+    desc: "کات‌های کیوت با متن لاله‌زار بامزه.",
+    aspect: "9:16",
+    filterPresetId: "clean",
+    captionPresetId: "lalezar",
+    transition: { type: "fade", dur: 0.3 },
+    title: "ملوس‌ترین موجود 🐾",
+    titleDur: 2.5,
+    musicMood: "بیت بامزه با سینت شاد",
+    tips: [
+      "سرِ تکان‌دادن حیوان = نقطه‌ی زوم بامزه.",
+      "متن «فکرشو می‌کردی؟» روی واکنش.",
+    ],
+  },
+  {
+    id: "quote-card",
+    name: "کارت نقل‌قول",
+    emoji: "🖤",
+    desc: "تک‌نفره و جدی؛ جمله‌های سنگین با زیرنویس کلاسیک.",
+    aspect: "4:5",
+    filterPresetId: "noir",
+    captionPresetId: "classic",
+    transition: { type: "fade", dur: 1 },
+    title: null,
+    titleDur: 4,
+    musicMood: "امبینت مینیمال پیانویی",
+    tips: [
+      "یک نمای طولانی ثابت + جمله روی آن.",
+      "امضای آخر: متن کوچک اسم گوینده‌ی جمله.",
+    ],
+  },
+  {
+    id: "week-recap",
+    name: "روزشمار هفته",
+    emoji: "📅",
+    desc: "۷ روز، ۷ کلیپ؛ نعنایی منظم با شماره‌گذاری.",
+    aspect: "9:16",
+    filterPresetId: "mint",
+    captionPresetId: "impact",
+    transition: { type: "slide", dur: 0.4 },
+    title: "۷ روز، ۷ کلیپ 📅",
+    titleDur: 2.5,
+    musicMood: "پاپ انگیزشی متعادل",
+    tips: [
+      "متن «روز ۱» تا «روز ۷» روی هر کلیپ.",
+      "کلیپ جمعه/آخر باید نتیجه را نشان بدهد.",
+    ],
+  },
+  {
+    id: "hype-intro",
+    name: "اینترو قدرتی",
+    emoji: "⚡️",
+    desc: "شروع انفجاری از سیاهی؛ برای شروع کانال یا تیزر.",
+    aspect: "9:16",
+    filterPresetId: "noir",
+    captionPresetId: "impact",
+    transition: { type: "black", dur: 0.5 },
+    title: "اسم تو ⚡️",
+    titleDur: 2,
+    musicMood: "درام هیپنوتیزمی با رایزر",
+    tips: [
+      "جلوه‌ی صوتی «رایزِر» از کتابخانه‌ی اپ روی شروع بگذار.",
+      "لوگو/اسم با فونت لاله‌زار و انیمیشن پاپ.",
+    ],
+  },
+  {
+    id: "slow-mood",
+    name: "اسلو امبینت",
+    emoji: "🌫️",
+    desc: "کلیپ‌های بلند آروم سینمایی؛ حس خواب‌آلود شاعرانه.",
+    aspect: "16:9",
+    filterPresetId: "cinema",
+    captionPresetId: "minimal",
+    transition: { type: "fade", dur: 1.2 },
+    title: null,
+    titleDur: 4,
+    musicMood: "امبینت فید خواب‌آلود",
+    tips: [
+      "سرعت ۰.۷x روی همه‌ی کلیپ‌ها؛ عجله ممنوع.",
+      "فقط ۲-۳ جمله‌ی شاعرانه در کل ویدئو.",
+    ],
+  },
+  {
+    id: "makeup-glow",
+    name: "گلو میکاپ",
+    emoji: "💄",
+    desc: "گرم و درخشان؛ قبل/بعد میکاپ با کات تمیز.",
+    aspect: "9:16",
+    filterPresetId: "warmglow",
+    captionPresetId: "minimal",
+    transition: { type: "fade", dur: 0.4 },
+    title: null,
+    titleDur: 2,
+    musicMood: "پاپ ریلکد زیبایی",
+    tips: [
+      "قبل (بدون میکاپ) فقط ۱ ثانیه؛ بعد را ۳ ثانیه بگیر.",
+      "ابزار روتوش اپ را روی فریز فریم نهایی امتحان کن.",
+    ],
+  },
+  {
+    id: "tech-review",
+    name: "بررسی گجت",
+    emoji: "📱",
+    desc: "شفاف و مهندسی؛ نماهای ۳۶۰ و مشخصات متنی.",
+    aspect: "9:16",
+    filterPresetId: "clean",
+    captionPresetId: "minimal",
+    transition: { type: "none", dur: 0 },
+    title: null,
+    titleDur: 2,
+    musicMood: "الکترونیک تمیز بدون وکال",
+    tips: [
+      "هر ویژگی: نمای نزدیک + متن کوتاه مشخصه.",
+      "قیمت/نتیجه‌گیری در کلیپ آخر با پس‌زمینه‌ی ثابت.",
+    ],
+  },
+];
+
+// ── shared apply logic (used by editor sheet, gallery and pending-template flow) ──
+
+import { DEFAULT_FILTER, FILTER_PRESETS, type Project, type TextItem } from "./types";
+import { SUBTITLE_PRESETS } from "@/lib/studio-data";
+import { captionTextItem, presetToCaptionPatch } from "@/components/studio/video/caption-utils";
+
+export function applyTemplateToProject(p: Project, tpl: EditTemplate) {
+  p.aspect = tpl.aspect;
+  const fp = FILTER_PRESETS.find((x) => x.id === tpl.filterPresetId);
+  for (const c of p.clips) {
+    if (fp) c.filter = { ...DEFAULT_FILTER, ...fp.state, presetId: fp.id };
+    c.transitionIn = { type: tpl.transition.type, dur: tpl.transition.dur };
+  }
+  if (tpl.title) {
+    p.texts.push({
+      ...captionTextItem(tpl.title, 0.2, 0.2 + tpl.titleDur),
+      isCaption: false,
+      karaoke: false,
+      font: "Lalezar",
+      weight: 400,
+      size: 86,
+      strokeW: 10,
+      animIn: "pop",
+      y: 0.3,
+    } as TextItem);
+  }
+  const capPr = SUBTITLE_PRESETS.find((x) => x.id === tpl.captionPresetId);
+  if (capPr) {
+    const patch = presetToCaptionPatch(capPr);
+    for (const t of p.texts) if (t.isCaption) Object.assign(t, patch);
+  }
+}
+
+/** Format a template's "uses" stat for gallery cards (deterministic per id). */
+export function templateStats(id: string): { uses: number; likes: number } {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  const uses = 8 + (h % 190); // 8K..198K
+  const likes = 1 + (h % 24); // 1K..24K
+  return { uses, likes };
+}

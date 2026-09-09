@@ -1,0 +1,697 @@
+{
+ "version": "1.0.0",
+ "count": 7,
+ "templates": [
+  {
+   "id": "music-beat-sync",
+   "name": "سینک بیت",
+   "en": "BEAT SYNC",
+   "cat": "music",
+   "tags": [
+    "بیت",
+    "سینک",
+    "پانچ"
+   ],
+   "aspect": "9:16",
+   "desc": "شش کات خشک روی ضرب با پانچ؛ استاندارد مونتاژ موزیک",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "کلیپ ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "کلیپ ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "video",
+     "label": "کلیپ ۳"
+    },
+    {
+     "id": "m4",
+     "kind": "video",
+     "label": "کلیپ ۴"
+    },
+    {
+     "id": "m5",
+     "kind": "audio",
+     "label": "موزیک اصلی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "🔊 با هدفون",
+     "size": "sm",
+     "y": 0.12
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.05,
+       "dur": 0.4,
+       "y": 0.12
+      }
+     ]
+    },
+    {
+     "d": 1,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1,
+     "motion": "dollyIn",
+     "slot": "m3",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1,
+     "motion": "handheld",
+     "slot": "m4",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "whipL"
+    },
+    {
+     "d": 1.4,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "dipBlack"
+    }
+   ],
+   "bpm": 128,
+   "art": {
+    "from": "#1d1817",
+    "to": "#c16a52",
+    "emoji": "🥁"
+   },
+   "featured": true
+  },
+  {
+   "id": "music-lyrics-cards",
+   "name": "کارت لیریکس",
+   "en": "LYRICS CARDS",
+   "cat": "music",
+   "tags": [
+    "لیریکس",
+    "متن",
+    "ترانه"
+   ],
+   "aspect": "9:16",
+   "desc": "خط‌به‌خط ترانه با تایپ‌رایتر و نئون؛ سبک اسپاتیفای",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "ترانهٔ اصلی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "خط اول ترانه…",
+     "size": "lg",
+     "y": 0.46
+    },
+    {
+     "id": "t2",
+     "sample": "خط دوم ترانه…",
+     "size": "lg",
+     "y": 0.46
+    },
+    {
+     "id": "t3",
+     "sample": "خط سوم ترانه…",
+     "size": "lg",
+     "y": 0.46
+    },
+    {
+     "id": "t4",
+     "sample": "نام آهنگ — خواننده",
+     "size": "sm",
+     "y": 0.6
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.6,
+     "motion": "breathe",
+     "art": [
+      "#1d1817",
+      "#262020"
+     ],
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "typewriter",
+       "at": 0.3,
+       "dur": 1.2,
+       "y": 0.46
+      }
+     ]
+    },
+    {
+     "d": 2.6,
+     "motion": "breathe",
+     "art": [
+      "#6f2f2a",
+      "#262020"
+     ],
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "typewriter",
+       "at": 0.3,
+       "dur": 1.2,
+       "y": 0.46
+      }
+     ]
+    },
+    {
+     "d": 2.6,
+     "motion": "breathe",
+     "art": [
+      "#9c453d",
+      "#3a322e"
+     ],
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "typewriter",
+       "at": 0.3,
+       "dur": 1.2,
+       "y": 0.46
+      }
+     ]
+    },
+    {
+     "d": 2.6,
+     "motion": "breathe",
+     "art": [
+      "#1d1817",
+      "#9c453d"
+     ],
+     "out": "dipBlack",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t4",
+       "anim": "neonOn",
+       "at": 0.4,
+       "dur": 0.9,
+       "y": 0.6
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#262020",
+    "to": "#9c453d",
+    "emoji": "🎤"
+   }
+  },
+  {
+   "id": "music-dj-set",
+   "name": "ست دی‌جی",
+   "en": "DJ SET",
+   "cat": "music",
+   "tags": [
+    "دی‌جی",
+    "کنسرت",
+    "استروب"
+   ],
+   "aspect": "9:16",
+   "desc": "کات‌های استروب‌دار صحنه با فلش‌های ضربی؛ ویدئوی کلوپ",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "صحنهٔ دی‌جی"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "مردم در حال رقص"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "پوستر"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "تکنو سِت"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "FRIDAY NIGHT SET",
+     "size": "md",
+     "y": 0.14
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "flashTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "glitchIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.14
+      }
+     ]
+    },
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "flashTr"
+    },
+    {
+     "d": 1.2,
+     "motion": "handheld",
+     "slot": "m1",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.2,
+     "motion": "dollyIn",
+     "slot": "m2",
+     "out": "whipR"
+    },
+    {
+     "d": 1.6,
+     "motion": "hold",
+     "slot": "m3",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "neonOn",
+       "at": 0.2,
+       "dur": 0.7,
+       "y": 0.14
+      }
+     ]
+    }
+   ],
+   "bpm": 132,
+   "art": {
+    "from": "#e0574a",
+    "to": "#1d1817",
+    "emoji": "🎧"
+   }
+  },
+  {
+   "id": "music-acoustic-mood",
+   "name": "مود آکوستیک",
+   "en": "ACOUSTIC MOOD",
+   "cat": "music",
+   "tags": [
+    "آکوستیک",
+    "آرام",
+    "گیتار"
+   ],
+   "aspect": "4:5",
+   "desc": "پست پخش زندهٔ گیتار با رنگ گرم و دانهٔ فیلم",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "پخش گیتار"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "کاور ترانه"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "آکوستیک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "پخش زندهٔ امشب ۹",
+     "size": "md",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.8,
+     "motion": "warmGlowIn",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "grain",
+      "vignette"
+     ]
+    },
+    {
+     "d": 2.8,
+     "motion": "kenburnsIn",
+     "slot": "m2",
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.5,
+       "dur": 0.7,
+       "y": 0.84
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "dipBlack",
+     "fx": [
+      "grain",
+      "vignette"
+     ]
+    }
+   ],
+   "look": "warmglow",
+   "art": {
+    "from": "#e0a78f",
+    "to": "#6f2f2a",
+    "emoji": "🎸"
+   }
+  },
+  {
+   "id": "music-dance-cut",
+   "name": "دنس کات",
+   "en": "DANCE CUT",
+   "cat": "music",
+   "tags": [
+    "رقص",
+    "ترند",
+    "چالش"
+   ],
+   "aspect": "9:16",
+   "desc": "چالش رقص با کات روی حرکت و سواییپ‌های تند",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "رقص ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "رقص ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "video",
+     "label": "رقص ۳"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "دنس پاپ"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "چالش #دنس‌کات",
+     "size": "md",
+     "y": 0.13
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.4,
+     "motion": "handheld",
+     "slot": "m1",
+     "out": "whipL",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.13
+      }
+     ]
+    },
+    {
+     "d": 1.4,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "whipR"
+    },
+    {
+     "d": 1.4,
+     "motion": "handheld",
+     "slot": "m3",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.6,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "dipBlack"
+    }
+   ],
+   "bpm": 124,
+   "art": {
+    "from": "#c16a52",
+    "to": "#e0574a",
+    "emoji": "💃"
+   }
+  },
+  {
+   "id": "music-concert-vlog",
+   "name": "ویلاگ کنسرت",
+   "en": "CONCERT VLOG",
+   "cat": "music",
+   "tags": [
+    "کنسرت",
+    "ویلاگ",
+    "مردم"
+   ],
+   "aspect": "16:9",
+   "desc": "روایت رفتن به کنسرت در چهار پرده با رنگ سینمایی",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "راه"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "ورود سالن"
+    },
+    {
+     "id": "m3",
+     "kind": "video",
+     "label": "صحنه"
+    },
+    {
+     "id": "m4",
+     "kind": "image",
+     "label": "عکس یادگاری"
+    },
+    {
+     "id": "m5",
+     "kind": "audio",
+     "label": "ایندی آرام"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "شب کنسرت 🎶",
+     "size": "lg",
+     "y": 0.16
+    },
+    {
+     "id": "t2",
+     "sample": "صدایی که فراموش نمی‌شه",
+     "size": "sm",
+     "y": 0.85
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "panR",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "letterbox"
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "dollyIn",
+     "slot": "m2",
+     "out": "zoomPunch",
+     "fx": [
+      "letterbox"
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "handheld",
+     "slot": "m3",
+     "out": "fade",
+     "fx": [
+      "letterbox"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.16
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "kenburnsIn",
+     "slot": "m4",
+     "out": "dipBlack",
+     "fx": [
+      "letterbox"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "blurIn",
+       "at": 0.4,
+       "dur": 0.7,
+       "y": 0.85
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#6f2f2a",
+    "to": "#e0a78f",
+    "emoji": "🎪"
+   }
+  },
+  {
+   "id": "music-vinyl-loop",
+   "name": "وینیل لوف",
+   "en": "VINYL LOOP",
+   "cat": "music",
+   "tags": [
+    "وینیل",
+    "رترو",
+    "لوف"
+   ],
+   "aspect": "1:1",
+   "desc": "پست رتروی وینیل با چرخش آرام و دانهٔ فیلم؛ استوری موزیک",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "کاور آلبوم"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "جاز وینیل"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "NOW PLAYING",
+     "size": "sm",
+     "y": 0.86
+    }
+   ],
+   "scenes": [
+    {
+     "d": 3,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "grain",
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.5,
+       "dur": 1,
+       "y": 0.86
+      }
+     ]
+    },
+    {
+     "d": 3,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "dipBlack",
+     "fx": [
+      "grain",
+      "vignette"
+     ]
+    }
+   ],
+   "look": "faded",
+   "art": {
+    "from": "#9c453d",
+    "to": "#262020",
+    "emoji": "💿"
+   }
+  }
+ ]
+}

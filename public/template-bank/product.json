@@ -1,0 +1,960 @@
+{
+ "version": "1.0.0",
+ "count": 9,
+ "templates": [
+  {
+   "id": "prod-showcase",
+   "name": "معرفی محصول",
+   "en": "PRODUCT SHOWCASE",
+   "cat": "product",
+   "tags": [
+    "محصول",
+    "ریلز",
+    "شیک"
+   ],
+   "aspect": "9:16",
+   "desc": "سه نمای محصول با نور سوئیپ و قیمت؛ استاندارد فروش آنلاین",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "نمای اصلی"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "نمای کنار"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "نمای در دست"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "لو-فای شیک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "کالکشن جدید",
+     "size": "md",
+     "y": 0.15
+    },
+    {
+     "id": "t2",
+     "sample": "۳۸۵ هزار تومان",
+     "size": "md",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.2,
+     "motion": "sweepFocus",
+     "slot": "m1",
+     "out": "wipeUpTr",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.35,
+       "dur": 0.8,
+       "y": 0.15
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "fade"
+    },
+    {
+     "d": 2.2,
+     "motion": "kenburnsIn",
+     "slot": "m3",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.6,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "look": "clean",
+   "art": {
+    "from": "#f1e9e4",
+    "to": "#e0a78f",
+    "emoji": "🛍️"
+   },
+   "featured": true
+  },
+  {
+   "id": "prod-unboxing",
+   "name": "آنباکسینگ",
+   "en": "UNBOXING",
+   "cat": "product",
+   "tags": [
+    "آنباکسینگ",
+    "بازکردن",
+    "هیجان"
+   ],
+   "aspect": "9:16",
+   "desc": "روایت بازکردن جعبه در چهار کات با ترنزیشن پانچ",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "جعبهٔ بسته"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "بازکردن"
+    },
+    {
+     "id": "m3",
+     "kind": "video",
+     "label": "محصول"
+    },
+    {
+     "id": "m4",
+     "kind": "video",
+     "label": "جزئیات"
+    },
+    {
+     "id": "m5",
+     "kind": "audio",
+     "label": "بیت لو-فای"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "بالاخره رسید 📦",
+     "size": "lg",
+     "y": 0.14
+    },
+    {
+     "id": "t2",
+     "sample": "ارزشش رو داشت؟",
+     "size": "md",
+     "y": 0.85
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.6,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.14
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "handheld",
+     "slot": "m2",
+     "out": "whipR"
+    },
+    {
+     "d": 1.8,
+     "motion": "kenburnsIn",
+     "slot": "m3",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 2,
+     "motion": "sweepFocus",
+     "slot": "m4",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.6,
+       "y": 0.85
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#3a322e",
+    "to": "#c16a52",
+    "emoji": "📦"
+   }
+  },
+  {
+   "id": "prod-before-after",
+   "name": "قبل و بعد",
+   "en": "BEFORE AFTER",
+   "cat": "product",
+   "tags": [
+    "مقایسه",
+    "تبدیل",
+    "نتیجه"
+   ],
+   "aspect": "9:16",
+   "desc": "مقایسهٔ پیش/پس با فلش و پانچ؛ خدمت و ترمیم و زیبایی",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "قبل"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "بعد"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "بیت هیتی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "قبل",
+     "size": "xl",
+     "y": 0.44
+    },
+    {
+     "id": "t2",
+     "sample": "بعد",
+     "size": "xl",
+     "y": 0.44
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.6,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "flashTr",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "stampIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.15,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "kenburnsIn",
+     "slot": "m2",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.1,
+       "dur": 0.4,
+       "y": 0.44
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#6f2f2a",
+    "to": "#e0a78f",
+    "emoji": "🔄"
+   }
+  },
+  {
+   "id": "prod-flash-sale",
+   "name": "فروش فوری",
+   "en": "FLASH SALE",
+   "cat": "product",
+   "tags": [
+    "تخفیف",
+    "اورژانس",
+    "شمارش"
+   ],
+   "aspect": "9:16",
+   "desc": "شمارش معکوس و قیمت خط‌خورده؛ فشار خرید در ۸ ثانیه",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "محصول"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "الکترو تند"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "فقط امروز",
+     "size": "lg",
+     "y": 0.18,
+     "accent": "#e0574a"
+    },
+    {
+     "id": "t2",
+     "sample": "۲۴۰ ← ۱۶۸",
+     "size": "xl",
+     "y": 0.42
+    },
+    {
+     "id": "t3",
+     "sample": "سفارش در دایرکت",
+     "size": "sm",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.4,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "flashTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "shakeIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.18
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "popIn",
+       "at": 0.25,
+       "dur": 0.5,
+       "y": 0.84
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.6,
+       "dur": 0.5,
+       "y": 0.42
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#e0574a",
+    "to": "#6f2f2a",
+    "emoji": "🚨"
+   }
+  },
+  {
+   "id": "prod-fashion-walk",
+   "name": "پوش‌بوک مد",
+   "en": "FASHION WALK",
+   "cat": "product",
+   "tags": [
+    "مد",
+    "لباس",
+    "ادیتوریال"
+   ],
+   "aspect": "4:5",
+   "desc": "سه برداشت کت‌واک با حروف‌چینی ادیتوریال؛ برند پوشاک",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "کت‌واک ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "کت‌واک ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "شات استودیو"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "الکترو-شیک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "AUTUMN DROP",
+     "size": "md",
+     "y": 0.12
+    },
+    {
+     "id": "t2",
+     "sample": "محبوب‌ترین استایل ماه",
+     "size": "sm",
+     "y": 0.86
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.4,
+     "motion": "panU",
+     "slot": "m1",
+     "out": "whipL",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.4,
+       "dur": 0.9,
+       "y": 0.12
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "panD",
+     "slot": "m2",
+     "out": "fade"
+    },
+    {
+     "d": 2.4,
+     "motion": "kenburnsIn",
+     "slot": "m3",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.6,
+       "y": 0.86
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#2d2725",
+    "to": "#e0a78f",
+    "emoji": "🧥"
+   }
+  },
+  {
+   "id": "prod-food-closeup",
+   "name": "کلوزآپ غذا",
+   "en": "FOOD CLOSEUP",
+   "cat": "product",
+   "tags": [
+    "غذا",
+    "کافه",
+    "اشتها"
+   ],
+   "aspect": "9:16",
+   "desc": "کلوزآپ‌های آبدار با بخار و متن منو؛ رستوران و کافه",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "کلوزآپ ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "کلوزآپ ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "پلیت کامل"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "جاز گرم"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "تازه از فر 🔥",
+     "size": "lg",
+     "y": 0.15
+    },
+    {
+     "id": "t2",
+     "sample": "رزرو: ۰۲۱-xxxx",
+     "size": "sm",
+     "y": 0.85
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.8,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.25,
+       "dur": 0.5,
+       "y": 0.15
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "fade",
+     "fx": [
+      "leak"
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "kenburnsIn",
+     "slot": "m3",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.6,
+       "y": 0.85
+      }
+     ]
+    }
+   ],
+   "look": "warmglow",
+   "art": {
+    "from": "#c16a52",
+    "to": "#e0a78f",
+    "emoji": "🍕"
+   }
+  },
+  {
+   "id": "prod-tech-app",
+   "name": "اپ و تکنولوژی",
+   "en": "APP TECH",
+   "cat": "product",
+   "tags": [
+    "اپ",
+    "تکنولوژی",
+    "دمو"
+   ],
+   "aspect": "9:16",
+   "desc": "دموی اپ با اسکرین‌شات و ویژگی‌ها؛ استارتاپ و سرویس",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "اسکرین‌شات ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "اسکرین‌شات ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "لوگو"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "الکترونیک تمیز"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "همه‌چیز در یک اپ",
+     "size": "lg",
+     "y": 0.16
+    },
+    {
+     "id": "t2",
+     "sample": "✓ سرعت",
+     "size": "md",
+     "y": 0.4
+    },
+    {
+     "id": "t3",
+     "sample": "✓ امنیت",
+     "size": "md",
+     "y": 0.5
+    },
+    {
+     "id": "t4",
+     "sample": "دانلود از لینک بایو",
+     "size": "sm",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "coldReveal",
+     "slot": "m1",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.16
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "panD",
+     "slot": "m1",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "slideSide",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.4
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "panD",
+     "slot": "m2",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "slideSide",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.5
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "hold",
+     "slot": "m3",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t4",
+       "anim": "popIn",
+       "at": 0.3,
+       "dur": 0.5,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "look": "clean",
+   "art": {
+    "from": "#262020",
+    "to": "#c16a52",
+    "emoji": "📱"
+   }
+  },
+  {
+   "id": "prod-grand-opening",
+   "name": "افتتاحیه",
+   "en": "GRAND OPENING",
+   "cat": "product",
+   "tags": [
+    "افتتاحیه",
+    "شعبهٔ جدید",
+    "تخفیف",
+    "فروشگاه"
+   ],
+   "aspect": "9:16",
+   "desc": "اعلام افتتاح با کانفتی ضربی و تخفیف ویژه؛ هیجان روز اول",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "نمای مغازه/شعبه"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "محصول یا داخل مغازه"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "تِرک جشن کوتاه"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "افتتاح شدیم! 🎉",
+     "size": "xl",
+     "y": 0.2
+    },
+    {
+     "id": "t2",
+     "sample": "جمعه • ساعت ۱۰ صبح",
+     "size": "md",
+     "y": 0.34
+    },
+    {
+     "id": "t3",
+     "sample": "تخفیف افتتاحیه: ۳۰٪",
+     "size": "lg",
+     "y": 0.82,
+     "accent": "#e0a78f"
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.4,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "bounceIn",
+       "at": 0.2,
+       "dur": 0.6,
+       "y": 0.2
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "flashTr",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "popIn",
+       "at": 0.25,
+       "dur": 0.5,
+       "y": 0.34
+      }
+     ]
+    },
+    {
+     "d": 1.4,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 2.2,
+     "motion": "breathe",
+     "slot": "m2",
+     "out": "dipBlack",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "stampIn",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.82
+      }
+     ]
+    }
+   ],
+   "bpm": 126,
+   "art": {
+    "from": "#c16a52",
+    "to": "#e0574a",
+    "emoji": "🎊"
+   },
+   "featured": true
+  },
+  {
+   "id": "prod-search-reveal",
+   "name": "معرفی با جستجو",
+   "en": "SEARCH REVEAL",
+   "cat": "product",
+   "tags": [
+    "جستجو",
+    "برند",
+    "معرفی",
+    "خلاقانه"
+   ],
+   "aspect": "9:16",
+   "desc": "نام برند در نوار جستجو تایپ و بعد محصول ظاهر می‌شود؛ ایدهٔ معرفی خلاقانه",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "محصول"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "لوگو"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "بیت مینیمال تیک‌تاکی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "بهترین «کافه» شهر…",
+     "size": "md",
+     "y": 0.4
+    },
+    {
+     "id": "t2",
+     "sample": "پیدا شد ✅",
+     "size": "lg",
+     "y": 0.4
+    },
+    {
+     "id": "t3",
+     "sample": "همین حالا سفارش بده",
+     "size": "md",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "hold",
+     "art": [
+      "#f1e9e4",
+      "#a89c95"
+     ],
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "typewriter",
+       "at": 0.35,
+       "dur": 1.3,
+       "y": 0.4
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.4
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "kenburnsIn",
+     "slot": "m2",
+     "out": "fade",
+     "fx": [
+      "leak"
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.7,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#3a322e",
+    "to": "#e0a78f",
+    "emoji": "🔍"
+   }
+  }
+ ]
+}
