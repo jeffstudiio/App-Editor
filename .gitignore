@@ -70,3 +70,6 @@ server.log
 /scripts/test_gemini.py
 /scripts/asanclip
 /.pages-test
+
+# exception
+!.env.example
