@@ -137,6 +137,7 @@ eq("trimTextRight min 0.3", trimTextRight({ start: 1, end: 1.2 }, -3).end, 1.3);
 
 // ── audio-extract: WAV encoder (بدون DOM — فقط ساختار AudioBuffer) ──
 import { audioBufferToWav } from "../src/lib/video/audio-extract";
+void (async () => {
 const fakeBuf = {
   numberOfChannels: 2,
   sampleRate: 44100,
@@ -158,3 +159,4 @@ eq("wav clamp <-1", new Int16Array(wab, 46, 1)[0], -32768);
 
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
+})();
