@@ -267,6 +267,48 @@ export class EditorEngine {
     this.syncAudio();
   }
 
+  /**
+   * فریمِ دقیقِ زمان t — برای export غیرریل‌تایم (WebCodecs).
+   * ویدئوی فعال و overlayهای فعال را دقیق seek می‌کند، منتظر تصاویر می‌ماند، بعد drawFrame.
+   */
+  async renderStill(ctx: CanvasRenderingContext2D, t: number, W: number, H: number, timeoutMs = 1200): Promise<void> {
+    const p = this.project;
+    const seeks: Promise<void>[] = [];
+    const act = activeClipAt(p, t);
+    if (act && act.clip.kind === "video" && !act.clip.reverse) {
+      const el = this.videos.get(act.clip.assetId);
+      if (el) seeks.push(seekVideo(el, act.clip.in + act.local * act.clip.speed));
+    }
+    for (const ov of p.overlays) {
+      if (ov.kind !== "video") continue;
+      if (t >= ov.start && t < ov.start + ov.dur) {
+        const el = this.videos.get(ov.assetId);
+        if (el) seeks.push(seekVideo(el, ov.srcIn + (t - ov.start)));
+      }
+    }
+    // تصاویرِ در حال نمایش — اگر هنوز decode نشده‌اند صبر می‌کنیم
+    const imgWaits: Promise<void>[] = [];
+    const waitImg = (el: HTMLImageElement | undefined) => {
+      if (!el || el.complete) return;
+      imgWaits.push(
+        new Promise<void>((res) => {
+          el.onload = () => res();
+          el.onerror = () => res();
+          setTimeout(res, timeoutMs);
+        })
+      );
+    };
+    if (act && act.clip.kind === "image") waitImg(this.images.get(act.clip.assetId));
+    for (const ov of p.overlays) {
+      if (ov.kind === "image" && t >= ov.start && t < ov.start + ov.dur) waitImg(this.images.get(ov.assetId));
+    }
+    await Promise.race([
+      Promise.all([...seeks, ...imgWaits]),
+      new Promise((r) => setTimeout(r, timeoutMs)),
+    ]);
+    this.drawFrame(ctx, t, W, H);
+  }
+
   /** Draws the whole composition at time t onto any 2D context. */
   drawFrame(ctx: CanvasRenderingContext2D, t: number, W: number, H: number) {
     const p = this.project;

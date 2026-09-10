@@ -19,6 +19,7 @@ import { SUBTITLE_PRESETS } from "@/lib/studio-data";
 import { buildSrt } from "@/lib/subtitle-render";
 import { transcribeMedia } from "@/lib/video/asr-client";
 import { EditorEngine, exportDims, pickRecorderMime } from "@/lib/video/engine";
+import { exportProjectAdvanced, supportsAdvancedExport } from "@/lib/video/export-advanced";
 import type { EditorCtx } from "./ctx";
 import { presetToCaptionPatch, captionTextItem } from "./caption-utils";
 import { SectionTitle, SliderRow } from "./ClipSheets";
@@ -556,8 +557,9 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
   const [progress, setProgress] = useState<number | null>(null);
   const [result, setResult] = useState<{ url: string; ext: string; size: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [signalRef] = useState<{ current: { cancelled: boolean } | null }>(() => ({ current: null }));
+  const advanced = supportsAdvancedExport();
 
-  const mime = pickRecorderMime(true);
   const dims = exportDims(ctx.project.aspect, quality);
   const total = ctx.project.clips.reduce((a, c) => a + clipDur(c), 0);
   const scale = Math.max(0.3, Math.min(1.6, (dims.w * dims.h) / (1080 * 1920)));
@@ -570,15 +572,36 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
     setResult(null);
     setProgress(0);
     const signal = { cancelled: false };
+    signalRef.current = signal;
     try {
-      const { blob, mime: usedMime } = await engine.exportVideo({
-        longSide: quality,
-        fps,
-        preferMp4: true,
-        bitrateMbps: mbps,
-        onProgress: (p) => setProgress(p),
-        signal,
-      });
+      let blob: Blob;
+      let usedMime: string;
+      try {
+        // مسیر ۱ — WebCodecs فریم‌به‌فریم (دقیق، صدا مستقل از gesture)
+        const res = await exportProjectAdvanced(engine, ctx.project, ctx.assets, {
+          longSide: quality,
+          fps,
+          bitrateMbps: mbps,
+          onProgress: (p) => setProgress(p),
+          signal,
+        });
+        blob = res.blob;
+        usedMime = res.mime;
+      } catch (advErr) {
+        if (signal.cancelled) return;
+        // مسیر ۲ — fallback به MediaRecorder زنده
+        const r = await engine.exportVideo({
+          longSide: quality,
+          fps,
+          preferMp4: true,
+          bitrateMbps: mbps,
+          onProgress: (p) => setProgress(p),
+          signal,
+        });
+        blob = r.blob;
+        usedMime = r.mime;
+        void advErr;
+      }
       const url = URL.createObjectURL(blob);
       const ext = usedMime.includes("mp4") ? "mp4" : "webm";
       setResult({ url, ext, size: blob.size });
@@ -587,9 +610,14 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
       a.download = `studio-export-${Date.now()}.${ext}`;
       a.click();
     } catch (e) {
+      if (signal.cancelled) {
+        setError(null);
+        return;
+      }
       setError(e instanceof Error ? e.message : "خروجی ناموفق بود");
     } finally {
       setProgress(null);
+      signalRef.current = null;
     }
   };
 
@@ -626,7 +654,8 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
 
       <div className="rounded-xl bg-secondary/40 border border-border p-3 text-xs space-y-1 leading-6" dir="ltr">
         <div>{dims.w}×{dims.h} • {fps}fps • ~{mbps}Mbps • ≈{estMb} MB</div>
-        <div className="text-muted-foreground">container: {mime?.includes("mp4") ? "MP4 (H.264)" : mime?.includes("vp9") ? "WebM (VP9)" : "WebM"}</div>
+        <div className="text-muted-foreground">container: MP4 (H.264) via WebCodecs — frame-accurate</div>
+        {!advanced && <div className="text-amber-300">WebCodecs در دسترس نیست → fallback به MediaRecorder (رندر زنده)</div>}
       </div>
 
       {progress !== null && (
@@ -634,7 +663,10 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
           <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
             <div className="h-full bg-gradient-to-l from-primary to-accent transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
-          <p className="text-xs text-center text-muted-foreground">در حال رندر زنده… ({Math.round(progress * 100)}٪) — صفحه را باز نگه دار</p>
+          <p className="text-xs text-center text-muted-foreground">در حال رندر… ({Math.round(progress * 100)}٪)</p>
+          <Button variant="outline" size="sm" className="w-full" onClick={() => { if (signalRef.current) signalRef.current.cancelled = true; }}>
+            لغو خروجی
+          </Button>
         </div>
       )}
 
@@ -653,12 +685,12 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
           </Button>
         </div>
       ) : (
-        <Button className="w-full" onClick={run} disabled={progress !== null || !mime}>
+        <Button className="w-full" onClick={run} disabled={progress !== null || (!advanced && !pickRecorderMime(true))}>
           <Download size={16} className="ml-1" />
           شروع خروجی بدون واترمارک
         </Button>
       )}
-      <p className="text-[11px] text-muted-foreground leading-5">💡 خروجی به‌صورت زنده رندر می‌شود (به طول ویدئو زمان می‌برد). گوشی را در همین صفحه نگه دار.</p>
+      <p className="text-[11px] text-muted-foreground leading-5">💡 خروجی فریم‌به‌فریم رندر می‌شود (به طول ویدئو زمان می‌برد) و دقیقاً همان پیش‌نمایش را می‌گیرید؛ می‌توانید لغو کنید.</p>
     </div>
   );
 }
