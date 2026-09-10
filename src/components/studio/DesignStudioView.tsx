@@ -200,7 +200,7 @@ export function DesignStudioView({ onNavigate }: { onNavigate: (v: ViewId) => vo
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "ساخت کپشن ناموفق بود");
-      setCaption(String(j.reply || "").trim());
+      setCaption(String(j.content || "").trim());
       toast.success("کپشن آماده شد ✍️");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ساخت کپشن ناموفق بود");

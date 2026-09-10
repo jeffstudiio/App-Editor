@@ -570,12 +570,3 @@ export function applyTemplateToProject(p: Project, tpl: EditTemplate) {
     for (const t of p.texts) if (t.isCaption) Object.assign(t, patch);
   }
 }
-
-/** Format a template's "uses" stat for gallery cards (deterministic per id). */
-export function templateStats(id: string): { uses: number; likes: number } {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  const uses = 8 + (h % 190); // 8K..198K
-  const likes = 1 + (h % 24); // 1K..24K
-  return { uses, likes };
-}

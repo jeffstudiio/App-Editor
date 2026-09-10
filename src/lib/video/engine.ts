@@ -94,6 +94,13 @@ export class EditorEngine {
     this.ctx = null;
     for (const el of this.videos.values()) el.pause();
     for (const el of this.audios.values()) el.pause();
+    // فیکس نشتی: کانتکست صوتی باید بسته شود و گراف‌ها آزماند
+    try {
+      this.audioCtx?.close();
+    } catch {}
+    this.audioCtx = null;
+    this.streamDest = null;
+    this.chains.clear();
   }
 
   onTick(fn: Tick) {

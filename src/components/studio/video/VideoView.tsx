@@ -521,7 +521,24 @@ export function VideoView() {
   const deleteSelected = useCallback(() => {
     if (!selection) return;
     mutate((p) => {
-      if (selection.type === "clip") p.clips = p.clips.filter((c) => c.id !== selection.id);
+      if (selection.type === "clip") {
+        const idx = p.clips.findIndex((c) => c.id === selection.id);
+        if (idx >= 0) {
+          const removed = clipDur(p.clips[idx]);
+          const removedStart = clipStart(p, selection.id);
+          const removedEnd = removedStart + removed;
+          p.clips = p.clips.filter((c) => c.id !== selection.id);
+          // ripple واقعی: لایه‌هایی که بعد از کلیپِ حذف‌شده شروع می‌شوند، به‌اندازهٔ همان حفره جلو می‌آیند
+          for (const o of p.overlays) if (o.start >= removedEnd - 1e-6) o.start = Math.max(0, o.start - removed);
+          for (const t of p.texts) {
+            if (t.start >= removedEnd - 1e-6) {
+              t.start = Math.max(0, t.start - removed);
+              t.end = Math.max(t.start + 0.1, t.end - removed);
+            }
+          }
+          for (const a of p.audios) if (a.start >= removedEnd - 1e-6) a.start = Math.max(0, a.start - removed);
+        }
+      }
       if (selection.type === "text") p.texts = p.texts.filter((t) => t.id !== selection.id);
       if (selection.type === "audio") p.audios = p.audios.filter((a) => a.id !== selection.id);
       if (selection.type === "overlay") p.overlays = p.overlays.filter((o) => o.id !== selection.id);
@@ -879,7 +896,7 @@ export function VideoView() {
             {Array.from({ length: Math.ceil(total) + 1 }).map((_, s) => (
               <div key={s} className="absolute top-0 h-full flex items-end" style={{ left: s * PX }}>
                 <div className="w-px h-2 bg-white/25" />
-                {s % 1 === 0 && PX >= 34 && (
+                {s % 5 === 0 && (
                   <span className="absolute left-1 -top-0.5 text-[9px] text-muted-foreground font-mono">{s}s</span>
                 )}
               </div>

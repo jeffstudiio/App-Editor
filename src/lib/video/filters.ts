@@ -276,7 +276,15 @@ export function textAnimState(item: TextItem, t: number): TextRenderState {
   if (item.animOut !== "none" && untilEnd < outDur) {
     const p = Math.max(0, untilEnd / outDur);
     if (item.animOut === "fade") st.alpha *= p;
-    else if (item.animOut === "pop") st.alpha *= p;
+    else if (item.animOut === "pop") {
+      st.alpha *= p;
+      st.scale *= 0.6 + 0.4 * p; // فیکس: خروج pop حالا واقعاً کوچک می‌شود
+    } else if (item.animOut === "slideUp") {
+      st.alpha *= p;
+      st.dy -= (1 - easeOutCubic(p)) * 40; // فیکس: قبلاً انتخابش اثر نداشت
+    } else if (item.animOut === "typewriter") {
+      st.reveal = Math.min(st.reveal, p); // فیکس: قبلاً انتخابش اثر نداشت
+    }
   }
   return st;
 }

@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import type { ViewId } from "./BottomNav";
-import { Search, Heart, Play, BadgeCheck, Sparkles } from "lucide-react";
+import { Search, Play, BadgeCheck, Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,6 @@ import {
   galleryItemById,
   type GalleryItem,
 } from "@/lib/video/gallery-templates";
-import { templateStats } from "@/lib/video/templates";
 import { setPendingTemplate } from "@/lib/video/transfer";
 import { toast } from "sonner";
 
@@ -88,7 +87,6 @@ export function TemplatesGallery({ onNavigate }: { onNavigate: (v: ViewId) => vo
       {/* masonry-ish grid */}
       <div className="grid grid-cols-2 gap-2.5">
         {items.map((it, i) => {
-          const stats = templateStats(it.recipe.id);
           return (
             <motion.button
               key={it.recipe.id}
@@ -115,8 +113,7 @@ export function TemplatesGallery({ onNavigate }: { onNavigate: (v: ViewId) => vo
                 <div className="absolute bottom-2 inset-x-2">
                   <div className="text-[13px] font-bold text-white truncate">{it.recipe.emoji} {it.recipe.name}</div>
                   <div className="flex items-center gap-2 text-[9px] text-white/75 mt-0.5">
-                    <span>{stats.uses}K استفاده</span>
-                    <span className="flex items-center gap-0.5"><Heart size={9} /> {stats.likes}K</span>
+                    <span>🎧 {it.recipe.musicMood}</span>
                     <span className="ms-auto">{it.entry.estDur}</span>
                   </div>
                 </div>

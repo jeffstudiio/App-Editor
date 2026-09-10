@@ -294,7 +294,9 @@ export function totalDur(p: Project): number {
   const clipsEnd = p.clips.reduce((acc, c) => acc + clipDur(c), 0);
   const audioEnd = p.audios.reduce((m, a) => Math.max(m, a.start + (a.out - a.in)), 0);
   const textEnd = p.texts.reduce((m, t) => Math.max(m, t.end), 0);
-  return Math.max(clipsEnd, audioEnd, textEnd);
+  // فیکس: لایه‌های PiP قبلاً از totalDur جا می‌افتادند و در پخش/خروجی بریده می‌شدند
+  const overlayEnd = p.overlays.reduce((m, o) => Math.max(m, o.start + o.dur), 0);
+  return Math.max(clipsEnd, audioEnd, textEnd, overlayEnd);
 }
 
 export function clipStart(p: Project, clipId: string): number {
