@@ -8,7 +8,7 @@ import {
   Repeat, Trash2, Copy, Type, Music4, Captions, Sparkles, MapPin,
   Layers, Crop, Settings2, Wand2, AudioWaveform, Vibrate, LayoutTemplate,
   Smile, AudioLines, Frame, TrendingUp, SkipForward, Save, WandSparkles, Diamond,
-  ClipboardCopy, ClipboardPaste, Unplug,
+  ClipboardCopy, ClipboardPaste, Unplug, Bot,
 } from "lucide-react";
 import {
   EditorEngine, analyzeStabilization, buildReverse,
@@ -25,6 +25,7 @@ import { fmtTime } from "./ctx";
 import { ClipBasicSheet, ClipLookSheet, ClipMotionSheet, TransitionSheet, ChromaSheet, AspectSheet } from "./ClipSheets";
 import { MediaSheet, TextSheet, AudioSheet } from "./MediaSheets";
 import { CaptionSheet, AiEditSheet, AutoVideoSheet, ExportSheet, MarkersSheet } from "./AiSheets";
+import { AgentSheet } from "./AgentSheet";
 import { DubbingSheet } from "./DubbingSheet";
 import { TemplatesSheet } from "./TemplatesSheet";
 import { StickersSheet, SfxSheet, MaskSheet, AiClipperSheet, ExtendSheet, ProjectSaveSheet } from "./MoreSheets";
@@ -92,6 +93,7 @@ const SHEET_TITLES: Record<string, string> = {
   "ai-clipper": "برش هوشمند صحنه",
   extend: "ادامه ویدئو",
   project: "ذخیره پروژه",
+  "ai-agent": "عامل هوشمند تدوین",
   kf: "انیمیشن کلیدی (Keyframe)",
 };
 
@@ -1277,6 +1279,7 @@ export function VideoView() {
     { icon: Layers, label: "لایه رویی", onClick: () => setSheet("media"), accent: true } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
     { icon: Wand2, label: "ویدئوساز AI", onClick: () => setSheet("autovid") },
     { icon: Sparkles, label: "دستیار ادیت", onClick: () => setSheet("ai-edit") },
+    { icon: Bot, label: "عامل تدوین", onClick: () => setSheet("ai-agent"), accent: true } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
     { icon: WandSparkles, label: "برش AI", onClick: () => setSheet("ai-clipper") },
     { icon: LayoutTemplate, label: "تمپلیت‌ها", onClick: () => setSheet("templates") },
     { icon: MapPin, label: "نشانگر", onClick: addMarker },
@@ -1684,6 +1687,7 @@ export function VideoView() {
             {sheet === "captions" && <CaptionSheet ctx={ctx} />}
             {sheet === "dub" && <DubbingSheet ctx={ctx} />}
             {sheet === "ai-edit" && <AiEditSheet ctx={ctx} />}
+            {sheet === "ai-agent" && <AgentSheet ctx={ctx} />}
             {sheet === "templates" && <TemplatesSheet ctx={ctx} />}
             {sheet === "autovid" && <AutoVideoSheet ctx={ctx} />}
             {sheet === "markers" && <MarkersSheet ctx={ctx} />}
