@@ -44,12 +44,13 @@
 4. فونت‌های بیشتر (Persian display/serif)
 
 ## MILESTONE 6 — AI Agent واقعی
-1. **Command registry** (`src/lib/video/commands.ts`): هر §45 به op تایپ‌دار روی mutate
-2. **Project serializer** برای context مدل (خلاصهٔ تایم‌لاین)
-3. `/api/agent`: tool-calling با zod validation + diff preview + apply با undo grouping
-4. Auto Edit / Auto Story روی همان executor
-5. AI Job System (IDB job store + progress + resume)
-6. Rate limiting ساده (per-IP token bucket در middleware)
+1. ✅ **Command registry** (`src/lib/ai/agent/commands.ts`): ۲۴ دستور تایپ‌دار با zod (تک‌منبع حقیقت planner+validator+UI)
+2. ✅ **Project serializer** (`buildSnapshot` در executor.ts) — خلاصهٔ تایم‌لاین برای مدل
+3. ✅ `/api/ai/plan`: tool-calling با zod validation + repair loop + پیش‌نمایش AgentSheet + apply با undo گروهی
+4. ✅ **Provider architecture نسل ۲** — `src/lib/ai/` (registry/router/fallback/health/usage/cache) + ۸ adapter + `/api/ai/status` + ماتریس `docs/AI-PROVIDERS.md`
+5. ✅ **Beauty Creative Pack** + جست‌وجوی معنایی بانک (Jina→local) — پک = داده خالص
+6. ✅ Rate limiting per-IP (token bucket) + سقف حجم payload در routeهای AI
+7. ▶ باقی: Auto Edit کامل (برنامه‌ریزی چندمرحله‌ای روی ASR/beat)، AI Job System (IDB job store + resume)
 
 ## MILESTONE 7 — Performance & Professional
 1. Workers: stab/beat/ASR-slice/reverse خارج از main thread
