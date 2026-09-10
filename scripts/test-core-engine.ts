@@ -142,7 +142,7 @@ const fakeBuf = {
   numberOfChannels: 2,
   sampleRate: 44100,
   length: 1000,
-  getChannelData: (c: number) => new Float32Array(1000).fill(c === 0 ? 0.5 : -0.25),
+  getChannelData: (c: number) => new Float32Array(1000).fill(c === 0 ? 1.5 : -1.5),
 } as unknown as AudioBuffer;
 const wav = audioBufferToWav(fakeBuf);
 const wab = await wav.arrayBuffer();
