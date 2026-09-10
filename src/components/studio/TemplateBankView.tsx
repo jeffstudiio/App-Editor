@@ -18,9 +18,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { ViewId } from "@/components/studio/BottomNav";
 import {
-  BANK_CATEGORIES, getSavedBankUrl, loadBank, saveBankUrl, searchBank,
+  BANK_CATEGORIES, getSavedBankUrl, loadBank, saveBankUrl,
   templateDuration, templateSlotCount,
 } from "@/lib/template-bank";
+import { searchBankLocal, semanticRerank } from "@/lib/ai/search";
 import type { BankTemplate, CategoryId } from "@/lib/template-bank/schema";
 import { setPendingBank } from "@/lib/video/transfer";
 import { TemplatePlayer, type SlotMedia } from "./template-bank/Player";
@@ -85,10 +86,29 @@ export function TemplateBankView({ onNavigate }: { onNavigate: (v: ViewId) => vo
   }, []);
 
   const allTemplates = useMemo(() => [...customList, ...templates], [customList, templates]);
-  const list = useMemo(
-    () => searchBank(cat === "mine" ? customList : allTemplates.filter((t) => cat === "all" || t.cat === cat), q),
+  const baseList = useMemo(
+    () => searchBankLocal(cat === "mine" ? customList : allTemplates.filter((t) => cat === "all" || t.cat === cat), q),
     [allTemplates, customList, cat, q],
   );
+  // بازچینش معنایی اختیاری — با امبدینگ (Jina با کلید، وگرنه محلی)
+  const [sem, setSem] = useState<{ q: string; order: BankTemplate[]; provider: "jina" | "local" } | null>(null);
+  const semActive = sem && sem.q === q.trim() ? sem : null;
+  useEffect(() => {
+    const query = q.trim();
+    if (!query) return;
+    let alive = true;
+    const timer = setTimeout(() => {
+      void semanticRerank(query, baseList).then((r) => {
+        if (!alive || !r.results.length) return;
+        setSem({ q: query, order: r.results, provider: r.provider });
+      });
+    }, 350);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [q, baseList]);
+  const list = semActive?.order ?? baseList;
   const featured = useMemo(() => templates.filter((t) => t.featured).slice(0, 6), [templates]);
 
   const refreshCustom = () => listCustomTemplates().then((l) => setCustomList(l.map(withDefaults)));
@@ -265,9 +285,14 @@ export function TemplateBankView({ onNavigate }: { onNavigate: (v: ViewId) => vo
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="جستجو در بانک… (نام، تگ، توضیح)"
+          placeholder="جستجوی هوشمند… (مثلاً: ریلز لوکس قبل و بعد مو)"
           className="h-10 pr-9 text-sm rounded-xl"
         />
+        {q.trim() && semActive && (
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 rounded-full bg-white/10 px-2 py-0.5 text-[9px] text-muted-foreground">
+            {semActive.provider === "jina" ? "معنایی Jina" : "معنایی محلی"}
+          </span>
+        )}
       </div>
 
       {/* دسته‌ها */}

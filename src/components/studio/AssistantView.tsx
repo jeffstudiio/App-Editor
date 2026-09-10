@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Send, Trash2, LoaderCircle, Settings2, Eye, EyeOff, X, ExternalLink, Zap, Mic, Square } from "lucide-react";
+import { ProviderStatusPanel } from "./ProviderStatusPanel";
 import { toast } from "sonner";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -652,6 +653,9 @@ export function AssistantView() {
                     <X size={15} />
                   </button>
                 </div>
+
+                {/* Provider status matrix (§34) */}
+                <ProviderStatusPanel />
 
                 {/* Provider cards */}
                 <div className="grid grid-cols-3 gap-2">
