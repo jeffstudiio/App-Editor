@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AIError } from "@/lib/ai/core/ai-errors";
 import { aiServer } from "@/lib/ai/server/registry";
 import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
-import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
+import { readJsonWithLimit, sanitizeKeys } from "@/lib/ai/server/route-helpers";
 
 export const maxDuration = 60;
 
@@ -31,10 +31,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "query یا texts لازم است." }, { status: 400 });
     }
     const apiKey = String(body.body?.apiKey ?? "").trim() || undefined;
+    const keys = sanitizeKeys(body.body?.keys);
 
     const inputs = query ? [query, ...texts] : texts;
     const { router } = aiServer();
-    const result = await router.route("embeddings", { capability: "embeddings", texts: inputs, apiKey });
+    const result = await router.route("embeddings", { capability: "embeddings", texts: inputs, apiKey, keys });
 
     if (result.output.kind !== "embeddings") {
       return NextResponse.json({ error: "خروجی امبدینگ نامعتبر بود." }, { status: 502 });

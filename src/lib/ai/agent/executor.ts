@@ -5,9 +5,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { removeKeyAt, upsertKey, type KfProp } from "@/lib/video/keyframes";
+import { clipToOverlayPayload, overlayToMainInsert, replaceSource } from "@/lib/video/edit-ops";
 import {
   clipDur, clipStart, uid,
-  DEFAULT_CHROMA,
+  DEFAULT_CHROMA, sanitizeCrop,
   type AudioItem, type Clip, type FilterState, type MediaAsset,
   type Project, type TextItem, type TransitionType,
 } from "@/lib/video/types";
@@ -29,8 +30,8 @@ export interface SnapshotClip {
   dur: number;
 }
 
-/** ساخت snapshot سبک از پروژه برای planner/validator */
-export function buildSnapshot(p: Project): PlanContextSnapshot {
+/** ساخت snapshot سبک از پروژه برای planner/validator (assets برای replace_clip) */
+export function buildSnapshot(p: Project, assets?: MediaAsset[]): PlanContextSnapshot {
   let acc = 0;
   const clips: SnapshotClip[] = p.clips.map((c) => {
     const d = clipDur(c);
@@ -48,6 +49,8 @@ export function buildSnapshot(p: Project): PlanContextSnapshot {
     hasCaptions: p.texts.some((t) => t.isCaption),
     hasMusic: p.audios.some((a) => !a.fromTts),
     allItemIds: [...p.clips, ...p.overlays, ...p.texts, ...p.audios].map((i) => i.id),
+    overlayIds: p.overlays.map((o) => o.id),
+    assets: (assets ?? []).map((a) => ({ id: a.id, name: a.name, type: a.type, duration: a.duration })),
   };
 }
 
@@ -59,7 +62,12 @@ function clamp(n: number, lo: number, hi: number): number {
 // SYNC executor — روی Project خالص کار می‌کند (داخل mutate صدا زده می‌شود)
 // ─────────────────────────────────────────────────────────────
 
-export function applySyncCommand(p: Project, op: Record<string, unknown>): CommandResult {
+export function applySyncCommand(
+  p: Project,
+  op: Record<string, unknown>,
+  ctx?: { assets?: MediaAsset[] }
+): CommandResult {
+  const assets = ctx?.assets;
   try {
     switch (op.tool) {
       case "set_aspect": {
@@ -269,6 +277,119 @@ export function applySyncCommand(p: Project, op: Record<string, unknown>): Comma
         return { tool: "change_speed", ok: true, message: `سرعت ×${c.speed}` };
       }
 
+      case "crop_clip": {
+        const c = p.clips.find((x) => x.id === op.clipId);
+        if (!c) return { tool: "crop_clip", ok: false, message: "کلیپ پیدا نشد" };
+        c.crop = sanitizeCrop({ x: op.x, y: op.y, w: op.w, h: op.h });
+        return { tool: "crop_clip", ok: true, message: `کراپ شد (${Math.round(c.crop.w * 100)}×${Math.round(c.crop.h * 100)}٪ منبع)` };
+      }
+
+      case "reset_crop": {
+        const c = p.clips.find((x) => x.id === op.clipId);
+        if (!c) return { tool: "reset_crop", ok: false, message: "کلیپ پیدا نشد" };
+        if (!c.crop) return { tool: "reset_crop", ok: false, message: "این کلیپ کراپ نداشت" };
+        c.crop = undefined;
+        return { tool: "reset_crop", ok: true, message: "کراپ حذف شد" };
+      }
+
+      case "replace_clip": {
+        const c = p.clips.find((x) => x.id === op.clipId);
+        if (!c) return { tool: "replace_clip", ok: false, message: "کلیپ پیدا نشد" };
+        const asset = (assets ?? []).find((a) => a.id === op.assetId);
+        if (!asset) return { tool: "replace_clip", ok: false, message: "رسانهٔ جایگزین در کتابخانه نیست" };
+        const res = replaceSource(
+          { assetId: c.assetId, kind: c.kind, in: c.in, out: c.out, srcDur: c.srcDur, speed: c.speed },
+          asset.id,
+          asset.type === "image" ? "image" : "video",
+          asset.duration || 10
+        );
+        if (!res.ok) return { tool: "replace_clip", ok: false, message: res.message };
+        c.assetId = asset.id;
+        c.name = asset.name;
+        c.srcDur = asset.duration || 10;
+        return { tool: "replace_clip", ok: true, message: `منبع کلیپ شد «${asset.name}»` };
+      }
+
+      case "to_overlay": {
+        const i = p.clips.findIndex((x) => x.id === op.clipId);
+        if (i < 0) return { tool: "to_overlay", ok: false, message: "کلیپ پیدا نشد" };
+        const c = p.clips[i];
+        let tlStart = 0;
+        for (let k = 0; k < i; k++) tlStart += clipDur(p.clips[k]);
+        const payload = clipToOverlayPayload(
+          {
+            id: c.id, kind: c.kind, assetId: c.assetId, name: c.name, in: c.in, out: c.out,
+            speed: c.speed, srcDur: c.srcDur, transform: c.transform, filter: c.filter, chroma: c.chroma,
+            mask: c.mask, crop: c.crop, kf: c.kf,
+          },
+          tlStart
+        );
+        p.clips.splice(i, 1);
+        p.overlays.push({
+          id: uid("ov"),
+          kind: payload.kind,
+          assetId: payload.assetId,
+          name: payload.name,
+          start: payload.start,
+          dur: payload.dur,
+          srcIn: payload.srcIn,
+          srcDur: payload.srcDur,
+          transform: payload.transform as Clip["transform"],
+          filter: payload.filter as Clip["filter"],
+          chroma: payload.chroma as Clip["chroma"],
+          mask: payload.mask as Clip["mask"],
+          crop: payload.crop as Clip["crop"],
+          kf: payload.kf as Clip["kf"],
+        });
+        return { tool: "to_overlay", ok: true, message: `کلیپ به لایهٔ رویی در ${tlStart.toFixed(1)}s رفت` };
+      }
+
+      case "to_main_track": {
+        const oi = p.overlays.findIndex((x) => x.id === op.id);
+        if (oi < 0) return { tool: "to_main_track", ok: false, message: "لایهٔ رویی پیدا نشد" };
+        const ov = p.overlays[oi];
+        const outSrc = ov.kind === "video" ? Math.min(ov.srcDur, ov.srcIn + ov.dur) : ov.srcIn + ov.dur;
+        const newClip: Clip = {
+          id: uid("clip"),
+          kind: ov.kind,
+          assetId: ov.assetId,
+          name: ov.name,
+          in: ov.srcIn,
+          out: outSrc,
+          speed: 1,
+          transform: { ...ov.transform },
+          filter: { ...ov.filter },
+          chroma: { ...ov.chroma },
+          mask: ov.mask ? { ...ov.mask } : undefined,
+          crop: ov.crop ? { ...ov.crop } : undefined,
+          volume: 1,
+          muted: ov.kind !== "video",
+          fadeIn: 0,
+          fadeOut: 0,
+          transitionIn: { type: "none", dur: 0 },
+          srcDur: ov.kind === "video" ? ov.srcDur : ov.dur,
+          srcW: 1080,
+          srcH: 1920,
+          kf: ov.kf ? structuredClone(ov.kf) : undefined,
+        };
+        const res = overlayToMainInsert(
+          p.clips as unknown as Array<Record<string, unknown> & { id: string }>,
+          newClip as unknown as Record<string, unknown> & { id: string },
+          ov.start,
+          (c) => clipDur(c as unknown as Clip),
+          () => uid("clip"),
+          ({ clips }, index, srcSplit) => {
+            const c = clips[index] as unknown as Clip;
+            const right: Clip = { ...structuredClone(c), id: uid("clip"), in: srcSplit, out: c.out, transitionIn: { type: "none", dur: 0 }, reverse: undefined };
+            c.out = srcSplit;
+            clips.splice(index + 1, 0, right as unknown as Record<string, unknown> & { id: string });
+          }
+        );
+        if (!res.ok) return { tool: "to_main_track", ok: false, message: res.message };
+        p.overlays.splice(oi, 1);
+        return { tool: "to_main_track", ok: true, message: res.message };
+      }
+
       case "add_transition": {
         const type = op.type as TransitionType;
         const dur = clamp(Number(op.dur ?? 0.5), 0.1, 2);
@@ -360,8 +481,12 @@ export function applySyncCommand(p: Project, op: Record<string, unknown>): Comma
 }
 
 /** اجرای تمام عملیات sync یک plan — یکجا داخل یک mutate (یک undo واحد) */
-export function applySyncPlan(p: Project, operations: Record<string, unknown>[]): CommandResult[] {
-  return operations.map((op) => applySyncCommand(p, op));
+export function applySyncPlan(
+  p: Project,
+  operations: Record<string, unknown>[],
+  ctx?: { assets?: MediaAsset[] }
+): CommandResult[] {
+  return operations.map((op) => applySyncCommand(p, op, ctx));
 }
 
 // ─────────────────────────────────────────────────────────────

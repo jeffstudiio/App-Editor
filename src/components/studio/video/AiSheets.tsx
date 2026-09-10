@@ -10,13 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Sparkles, Trash2, Download, MapPin, Wand2 } from "lucide-react";
+import { Loader2, Sparkles, Trash2, Download, MapPin, Wand2, Scissors } from "lucide-react";
 import {
   DEFAULT_CHROMA, DEFAULT_FILTER, DEFAULT_TRANSFORM, FILTER_PRESETS, clipDur, clipStart, uid,
   type Clip, type MediaAsset, type TextItem,
 } from "@/lib/video/types";
 import { SUBTITLE_PRESETS } from "@/lib/studio-data";
-import { buildSrt } from "@/lib/subtitle-render";
+import { buildSrt, buildVtt } from "@/lib/subtitle-render";
 import { transcribeMedia } from "@/lib/video/asr-client";
 import { EditorEngine, exportDims, pickRecorderMime } from "@/lib/video/engine";
 import { exportProjectAdvanced, supportsAdvancedExport } from "@/lib/video/export-advanced";
@@ -90,15 +90,19 @@ export function CaptionSheet({ ctx }: { ctx: EditorCtx }) {
         });
       }, { sensitivity: sens });
 
-      // map source-time segments onto timeline
+      // map source-time segments onto timeline (+ word-level timing برای کارائوکهٔ واقعی)
       const st = clipStart(ctx.project, sourceClip.id);
       const speed = sourceClip.speed || 1;
+      const tlOf = (srcT: number) => st + Math.max(0, srcT - sourceClip.in) / speed;
       const items = segs
         .filter((s) => s.end > sourceClip.in && s.start < sourceClip.out)
         .map((s) => {
-          const tlStart = st + Math.max(0, s.start - sourceClip.in) / speed;
-          const tlEnd = st + (Math.min(sourceClip.out, s.end) - sourceClip.in) / speed;
-          return captionPatch(s.text, tlStart, tlEnd);
+          const tlStart = tlOf(s.start);
+          const tlEnd = tlOf(Math.min(sourceClip.out, s.end));
+          const words = s.words
+            ?.map((w) => ({ w: w.w, start: tlOf(w.start), end: tlOf(Math.min(sourceClip.out, w.end)) }))
+            .filter((w) => w.end > w.start);
+          return captionPatch(s.text, tlStart, tlEnd, words);
         });
       if (!items.length) throw new Error("متنی استخراج نشد");
       ctx.mutate((p) => {
@@ -163,6 +167,15 @@ export function CaptionSheet({ ctx }: { ctx: EditorCtx }) {
     a.click();
   };
 
+  const exportVtt = () => {
+    const lines = [...captions].sort((a, b) => a.start - b.start).map((c) => ({ text: c.text, start: c.start, end: c.end }));
+    const blob = new Blob([buildVtt(lines)], { type: "text/vtt;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "captions.vtt";
+    a.click();
+  };
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border bg-secondary/40 p-3 text-xs leading-6">
@@ -199,9 +212,12 @@ export function CaptionSheet({ ctx }: { ctx: EditorCtx }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <Button variant="outline" size="sm" onClick={exportSrt} disabled={!captions.length} className="px-1">
           <Download size={13} className="ml-1" /> SRT
+        </Button>
+        <Button variant="outline" size="sm" onClick={exportVtt} disabled={!captions.length} className="px-1">
+          <Download size={13} className="ml-1" /> VTT
         </Button>
         <Button variant="outline" size="sm" onClick={fixWithAi} disabled={!captions.length || fixing} className="px-1">
           {fixing ? <Loader2 size={13} className="animate-spin ml-1" /> : <Sparkles size={13} className="ml-1" />}
@@ -632,13 +648,16 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
         ))}
       </div>
       <SectionTitle>فریم‌ریت</SectionTitle>
-      <div className="grid grid-cols-2 gap-2">
-        {[24, 30].map((f) => (
+      <div className="grid grid-cols-3 gap-2">
+        {[24, 30, 60].map((f) => (
           <button key={f} onClick={() => setFps(f)} className={`py-2.5 rounded-xl border text-sm ${fps === f ? "border-primary bg-primary/15 text-primary" : "border-border bg-secondary/60"}`}>
             {f} fps
           </button>
         ))}
       </div>
+      {fps === 60 && advanced && (
+        <p className="text-[11px] text-amber-300">۶۰fps سنگین‌تر رندر می‌شود؛ اگر انکودر دستگاه پشتیبانی نکرد، خروجی خطا می‌دهد — به ۳۰ برگرد.</p>
+      )}
       <SectionTitle>کیفیت فشرده‌سازی (Bitrate)</SectionTitle>
       <div className="grid grid-cols-3 gap-2">
         {[
@@ -699,6 +718,33 @@ export function ExportSheet({ ctx, engine }: { ctx: EditorCtx; engine: EditorEng
 
 export function MarkersSheet({ ctx }: { ctx: EditorCtx }) {
   const markers = [...ctx.project.markers].sort((a, b) => a.t - b.t);
+
+  // C8 (P2): برش واقعی کلیپ اصلی روی همهٔ نشانگرها — هر نشانگر داخل یک کلیپ، یک برش
+  const splitAtMarkers = () => {
+    let n = 0;
+    ctx.mutate((p) => {
+      const sorted = [...p.markers].sort((a, b) => a.t - b.t);
+      for (const m of sorted) {
+        const at = m.t;
+        let acc = 0;
+        for (let i = 0; i < p.clips.length; i++) {
+          const c = p.clips[i];
+          const d = (c.out - c.in) / (c.kind === "image" ? 1 : c.speed);
+          if (at > acc + 0.25 && at < acc + d - 0.25) {
+            const srcSplit = c.in + (at - acc) * c.speed;
+            const right = { ...structuredClone(c), id: uid("cl"), in: srcSplit, out: c.out, transitionIn: { type: "none" as const, dur: 0 }, reverse: undefined };
+            c.out = srcSplit;
+            p.clips.splice(i + 1, 0, right);
+            n++;
+            break; // جمع مدت‌ها بعد از برش عوض می‌شود — نشانگر بعدی با تایم‌لاین تازه بررسی می‌شود
+          }
+          acc += d;
+        }
+      }
+    });
+    ctx.toast(n ? `${n} برش روی نشانگرها انجام شد ✂️` : "هیچ نشانگری داخل کلیپی نمی‌افتد", n ? "success" : "info");
+  };
+
   return (
     <div className="space-y-3">
       <Button variant="outline" className="w-full" onClick={() => {
@@ -706,6 +752,11 @@ export function MarkersSheet({ ctx }: { ctx: EditorCtx }) {
       }}>
         <MapPin size={15} className="ml-1" /> افزودن نشانگر روی {ctx.time.toFixed(1)}s
       </Button>
+      {markers.length > 0 && (
+        <Button className="w-full" onClick={splitAtMarkers}>
+          <Scissors size={15} className="ml-1" /> برش کلیپ‌ها روی نشانگرها ({markers.length})
+        </Button>
+      )}
       {markers.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">نشانگری نیست. با نشانگرها ریتم ادیت را با ضرب موزیک هماهنگ کن.</p>}
       {markers.map((m) => (
         <div key={m.id} className="flex items-center gap-2 rounded-xl border border-border bg-secondary/30 p-2.5">

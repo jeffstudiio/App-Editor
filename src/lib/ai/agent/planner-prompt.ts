@@ -27,6 +27,10 @@ export function buildPlannerSystemPrompt(pack: CreativePack | null): string {
   - add_keyframe: prop: "scale"|"x"|"y"|"rotate"|"opacity" ; ease: "linear"|"in"|"out"|"inout"|"back"|"elastic"|"bounce"
   - add_music.mood: "luxury" | "warm" | "emotional" | "energetic" | "cinematic" | "calm" | "clean"
   - add_sfx.id: "whoosh" | "pop" | "riser" | "impact" | "ding" | "heartbeat" | "click" | "gleam"
+  - crop_clip: x/y/w/h normalized 0..1 source rect (e.g. {x:0, y:0.1, w:1, h:0.8} cuts 10% top) — REAL crop in preview AND export; prefer centered ratios like 1:1 (w=h=min) for square posts
+  - reset_crop: removes crop from a clip
+  - replace_clip.assetId: ONLY from snapshot.assets list (same kind as the clip — video with video, image with image)
+  - to_overlay: moves a main clip to the overlay (PiP) track; to_main_track.id: an overlay id from snapshot.overlayIds
   - generate_voice.voice: use "fa-IR-DilaraNeural" (Persian female) or "fa-IR-FaridNeural" (Persian male)`;
 
   return `You are the JEFF Creative Studio AI EDITING AGENT. You convert a user's Persian editing request into a structured JSON edit plan that executes on a real timeline.
@@ -68,12 +72,18 @@ Fix these exact problems and output the corrected pure JSON plan now.`;
 
 export function buildPlannerUserMessage(instruction: string, snapshot: PlanContextSnapshot, pack: CreativePack | null): string {
   const packLine = pack ? `\nPACK_MOODS: ${pack.musicMoods.map((m) => m.id).join(", ")}` : "";
+  const assetsLine = snapshot.assets?.length
+    ? `\nassets (replace_clip source pool): ${snapshot.assets.map((a) => `{id:"${a.id}", name:"${a.name}", type:${a.type}}`).join(", ")}`
+    : "\nassets: none (do NOT use replace_clip)";
+  const overlaysLine = snapshot.overlayIds?.length
+    ? `\noverlays: ${snapshot.overlayIds.join(", ")}`
+    : "";
   return `TIMELINE CONTEXT (real current project):
 aspect: ${snapshot.aspect}
 totalDuration: ${snapshot.duration.toFixed(2)}s
 clips (timelineStart..end): ${snapshot.clips.map((c) => `{id:"${c.id}", name:"${c.name}", kind:${c.kind}, ${c.timelineStart.toFixed(2)}..${(c.timelineStart + c.dur).toFixed(2)}}`).join(", ") || "EMPTY"}
 texts: ${snapshot.textItems.map((t) => `{id:"${t.id}", role:${t.role}, start:${t.start.toFixed(2)}}`).join(", ") || "none"}
-audios: ${snapshot.audioItems.map((a) => `{id:"${a.id}", name:"${a.name}", start:${a.start.toFixed(2)}}`).join(", ") || "none"}
+audios: ${snapshot.audioItems.map((a) => `{id:"${a.id}", name:"${a.name}", start:${a.start.toFixed(2)}}`).join(", ") || "none"}${overlaysLine}${assetsLine}
 hasCaptions: ${snapshot.hasCaptions}
 hasMusic: ${snapshot.hasMusic}${packLine}
 

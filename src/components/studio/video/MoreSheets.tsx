@@ -216,13 +216,13 @@ export function AiClipperSheet({ ctx }: { ctx: EditorCtx }) {
   const run = async () => {
     if (!canRun || !asset) return ctx.toast("برش هوشمند برای کلیپ ویدئویی عادی است", "error");
     setRunning(true);
-    ctx.setBusy({ label: "تحلیل صحنه‌ها و لحظه‌های طلایی…", progress: 0 });
+    ctx.setBusy({ label: "تحلیل انرژی صدا و یافتن لحظه‌های طلایی…", progress: 0 });
     try {
       const blob = await (await fetch(asset.url)).blob();
       const res = await analyzeClipScenes(blob, { in: clip.in, out: clip.out }, {
         maxSplits: 5,
         topMoments: 3,
-        onProgress: (p) => ctx.setBusy({ label: "تحلیل صحنه‌ها و لحظه‌های طلایی…", progress: p }),
+        onProgress: (p) => ctx.setBusy({ label: "تحلیل انرژی صدا و یافتن لحظه‌های طلایی…", progress: p }),
       });
       setAnalysis(res);
     } catch (e) {
@@ -291,7 +291,7 @@ export function AiClipperSheet({ ctx }: { ctx: EditorCtx }) {
       {!analysis ? (
         <Button className="w-full" onClick={run} disabled={!canRun || running}>
           {running ? <Loader2 size={16} className="animate-spin ml-1" /> : <Sparkles size={16} className="ml-1" />}
-          شروع تحلیل صحنه‌ها
+          شروع تحلیل صدا (انرژی)
         </Button>
       ) : (
         <>

@@ -13,7 +13,7 @@ import type { PlanContextSnapshot } from "@/lib/ai/agent/plan-schema";
 import { getPack } from "@/lib/creative-packs";
 import { aiServer } from "@/lib/ai/server/registry";
 import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
-import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
+import { readJsonWithLimit, sanitizeKeys } from "@/lib/ai/server/route-helpers";
 import type { ChatMessage } from "@/lib/ai/core/provider-types";
 
 export const maxDuration = 120;
@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
     const pack = getPack(typeof body.body?.pack === "string" ? body.body.pack : null);
     const apiKey = String(body.body?.apiKey ?? "").trim() || undefined;
     const model = String(body.body?.model ?? "").trim() || undefined;
+    const keys = sanitizeKeys(body.body?.keys);
     const prefer =
       body.body?.provider === "groq" || body.body?.provider === "gemini" || body.body?.provider === "openrouter"
         ? (body.body.provider as "groq" | "gemini" | "openrouter")
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
               ...messages,
               { role: "user" as const, content: buildRepairMessage("", repairIssues) },
             ];
-      const result = await router.route("fast_text", { capability: "fast_text", messages: msgs, jsonMode: true, apiKey, model }, { prefer });
+      const result = await router.route("fast_text", { capability: "fast_text", messages: msgs, jsonMode: true, apiKey, model, keys }, { prefer });
       providerId = result.provider.id;
       via = result.via;
       if (result.output.kind !== "text") break;

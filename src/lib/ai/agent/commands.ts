@@ -16,6 +16,7 @@ export const KF_PROPS = ["scale", "x", "y", "rotate", "opacity"] as const;
 export const EASES = ["linear", "in", "out", "inout", "back", "elastic", "bounce"] as const;
 export const ASPECTS = ["9:16", "1:1", "16:9", "4:5", "3:4"] as const;
 export const SFX_IDS = ["whoosh", "pop", "riser", "impact", "ding", "heartbeat", "click", "gleam"] as const;
+export const CROP_PRESETS = ["free", "1:1", "4:5", "9:16", "16:9"] as const;
 
 /** اسکیمای پارامتر هر دستور — منبع حقیقت برای validator و planner */
 export const CommandParams: Record<string, z.ZodTypeAny> = {
@@ -78,6 +79,29 @@ export const CommandParams: Record<string, z.ZodTypeAny> = {
   duplicate_clip: z.object({ tool: z.literal("duplicate_clip"), clipId: CLIP_ID }),
 
   change_speed: z.object({ tool: z.literal("change_speed"), clipId: CLIP_ID, speed: z.number().min(0.25).max(4) }),
+
+  crop_clip: z.object({
+    tool: z.literal("crop_clip"),
+    clipId: CLIP_ID,
+    /** مستطیل نرمال‌شدهٔ منبع ۰..۱ — لبه‌ها واقعاً حذف می‌شوند (در خروجی هم) */
+    x: z.number().min(0).max(0.9),
+    y: z.number().min(0).max(0.9),
+    w: z.number().min(0.1).max(1),
+    h: z.number().min(0.1).max(1),
+  }),
+
+  reset_crop: z.object({ tool: z.literal("reset_crop"), clipId: CLIP_ID }),
+
+  replace_clip: z.object({
+    tool: z.literal("replace_clip"),
+    clipId: CLIP_ID,
+    /** باید یکی از assetهای snapshot.assets باشد — همان نوع کلیپ */
+    assetId: z.string().min(1),
+  }),
+
+  to_overlay: z.object({ tool: z.literal("to_overlay"), clipId: CLIP_ID }),
+
+  to_main_track: z.object({ tool: z.literal("to_main_track"), /** id لایهٔ رویی */ id: z.string().min(1) }),
 
   add_transition: z.object({
     tool: z.literal("add_transition"),
@@ -174,6 +198,11 @@ export const COMMAND_CATALOG: CommandDescriptor[] = [
   { id: "move_clip", fa: "جابه‌جایی ترتیب کلیپ", en: "reorder a clip" },
   { id: "duplicate_clip", fa: "تکثیر کلیپ", en: "duplicate a clip" },
   { id: "change_speed", fa: "تغییر سرعت", en: "change clip playback speed" },
+  { id: "crop_clip", fa: "کراپ واقعی کلیپ", en: "crop a clip's source rect (x/y/w/h normalized 0..1) — real crop in preview and export" },
+  { id: "reset_crop", fa: "حذف کراپ", en: "remove crop from a clip" },
+  { id: "replace_clip", fa: "تعویض منبع کلیپ", en: "replace a clip's media source with another asset of the same kind (needs snapshot.assets)" },
+  { id: "to_overlay", fa: "بردن کلیپ به لایهٔ رویی", en: "move a main-track clip to the overlay track (PiP) at its current time" },
+  { id: "to_main_track", fa: "آوردن لایه به ترک اصلی", en: "move an overlay layer back to the main track at its start time" },
   { id: "add_transition", fa: "افزودن ترنزیشن", en: "add transition between clips" },
   { id: "set_fades", fa: "فید ویدئویی", en: "video fade in/out" },
   { id: "set_volume", fa: "تغییر صدا", en: "set volume of clips or audio items" },

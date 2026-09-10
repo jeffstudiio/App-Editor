@@ -8,7 +8,7 @@ import {
   Repeat, Trash2, Copy, Type, Music4, Captions, Sparkles, MapPin,
   Layers, Crop, Settings2, Wand2, AudioWaveform, Vibrate, LayoutTemplate,
   Smile, AudioLines, Frame, TrendingUp, SkipForward, Save, WandSparkles, Diamond,
-  ClipboardCopy, ClipboardPaste, Unplug, Bot,
+  ClipboardCopy, ClipboardPaste, Unplug, Bot, BringToFront, SendToBack, ChevronsUp, ChevronsDown, PictureInPicture2,
 } from "lucide-react";
 import {
   EditorEngine, analyzeStabilization, buildReverse,
@@ -22,7 +22,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import type { BusyState, EditorCtx, Selection } from "./ctx";
 import { fmtTime } from "./ctx";
-import { ClipBasicSheet, ClipLookSheet, ClipMotionSheet, TransitionSheet, ChromaSheet, AspectSheet } from "./ClipSheets";
+import { ClipBasicSheet, ClipLookSheet, ClipMotionSheet, TransitionSheet, ChromaSheet, AspectSheet, CropSheet } from "./ClipSheets";
 import { MediaSheet, TextSheet, AudioSheet } from "./MediaSheets";
 import { CaptionSheet, AiEditSheet, AutoVideoSheet, ExportSheet, MarkersSheet } from "./AiSheets";
 import { AgentSheet } from "./AgentSheet";
@@ -95,6 +95,7 @@ const SHEET_TITLES: Record<string, string> = {
   project: "ذخیره پروژه",
   "ai-agent": "عامل هوشمند تدوین",
   kf: "انیمیشن کلیدی (Keyframe)",
+  crop: "کراپ واقعی",
 };
 
 export function VideoView() {
@@ -687,6 +688,111 @@ export function VideoView() {
     mutate((p) => p.markers.push({ id: uid("mk"), t: time, label: "" }));
     toast.success(`نشانگر روی ${fmtTime(time)} ثبت شد 📍`);
   }, [mutate, time]);
+
+  // ── عملیات بین‌ترک (P1-M2) — واقعی، همان منطق executor ──
+  const sendClipToOverlay = useCallback((clipId: string) => {
+    mutate((p) => {
+      const i = p.clips.findIndex((x) => x.id === clipId);
+      if (i < 0) return;
+      const c = p.clips[i];
+      let tlStart = 0;
+      for (let k = 0; k < i; k++) tlStart += clipDur(p.clips[k]);
+      p.overlays.push({
+        id: uid("ov"),
+        kind: c.kind,
+        assetId: c.assetId,
+        name: c.name,
+        start: tlStart,
+        dur: Math.max(0.2, (c.out - c.in) / (c.kind === "image" ? 1 : c.speed)),
+        srcIn: c.in,
+        srcDur: c.kind === "video" ? c.srcDur : c.out - c.in,
+        transform: { ...c.transform },
+        filter: { ...c.filter },
+        chroma: { ...c.chroma },
+        mask: c.mask ? { ...c.mask } : undefined,
+        crop: c.crop ? { ...c.crop } : undefined,
+        kf: c.kf ? structuredClone(c.kf) : undefined,
+      });
+      p.clips.splice(i, 1);
+    });
+    setSelection(null);
+    toast.success("کلیپ به لایهٔ رویی (PiP) منتقل شد — کلیپ‌های بعدی به جلو آمدند");
+  }, [mutate]);
+
+  const bringOverlayToMain = useCallback((overlayId: string) => {
+    mutate((p) => {
+      const oi = p.overlays.findIndex((x) => x.id === overlayId);
+      if (oi < 0) return;
+      const ov = p.overlays[oi];
+      // ۱) در صورت نیاز، کلیپ اصلی زیر لایه بریده می‌شود
+      let acc = 0;
+      let insertAt = p.clips.length;
+      for (let i = 0; i < p.clips.length; i++) {
+        const d = clipDur(p.clips[i]);
+        if (ov.start >= acc && ov.start < acc + d) {
+          if (ov.start > acc + 0.25 && ov.start < acc + d - 0.25) {
+            const c = p.clips[i];
+            const srcSplit = c.in + (ov.start - acc) * c.speed;
+            const right: Clip = { ...structuredClone(c), id: uid("cl"), in: srcSplit, out: c.out, transitionIn: { type: "none", dur: 0 }, reverse: undefined };
+            c.out = srcSplit;
+            p.clips.splice(i + 1, 0, right);
+            insertAt = i + 1;
+          } else {
+            insertAt = ov.start <= acc ? i : i + 1;
+          }
+          break;
+        }
+        if (ov.start < acc) {
+          insertAt = i;
+          break;
+        }
+        acc += d;
+      }
+      // ۲) لایه به کلیپ اصلی تبدیل و درج می‌شود
+      const outSrc = ov.kind === "video" ? Math.min(ov.srcDur, ov.srcIn + ov.dur) : ov.srcIn + ov.dur;
+      p.clips.splice(insertAt, 0, {
+        id: uid("cl"),
+        kind: ov.kind,
+        assetId: ov.assetId,
+        name: ov.name,
+        in: ov.srcIn,
+        out: outSrc,
+        speed: 1,
+        transform: { ...ov.transform },
+        filter: { ...ov.filter },
+        chroma: { ...ov.chroma },
+        mask: ov.mask ? { ...ov.mask } : undefined,
+        crop: ov.crop ? { ...ov.crop } : undefined,
+        volume: 1,
+        muted: ov.kind !== "video",
+        fadeIn: 0,
+        fadeOut: 0,
+        transitionIn: { type: "none", dur: 0 },
+        srcDur: ov.kind === "video" ? ov.srcDur : ov.dur,
+        srcW: 1080,
+        srcH: 1920,
+        kf: ov.kf ? structuredClone(ov.kf) : undefined,
+      });
+      p.overlays.splice(oi, 1);
+    });
+    setSelection(null);
+    toast.success("لایه به ترک اصلی منتقل شد");
+  }, [mutate]);
+
+  const reorderSelectedOverlay = useCallback((dir: "forward" | "backward" | "front" | "back") => {
+    if (!selection || selection.type !== "overlay") return;
+    mutate((p) => {
+      const i = p.overlays.findIndex((o) => o.id === selection.id);
+      if (i < 0) return;
+      const [item] = p.overlays.splice(i, 1);
+      let j = i;
+      if (dir === "front") j = p.overlays.length;
+      else if (dir === "back") j = 0;
+      else if (dir === "forward") j = Math.min(p.overlays.length, i + 1);
+      else j = Math.max(0, i - 1);
+      p.overlays.splice(j, 0, item);
+    });
+  }, [mutate, selection]);
 
   // ── clipboard واقعی (IDB) — کپی/چسباندن حتی بین پروژه‌ها ──
   const copySelectedToClipboard = useCallback(async () => {
@@ -1289,7 +1395,7 @@ export function VideoView() {
     ? [
         { icon: Scissors, label: "برش", onClick: splitSelected },
         { icon: Settings2, label: "سرعت/صدا", onClick: () => setSheet("clip-basic") },
-        { icon: Crop, label: "تریم", onClick: () => setSheet("clip-basic") },
+        { icon: Crop, label: selectedClip?.crop && (selectedClip.crop.w < 0.999 || selectedClip.crop.h < 0.999) ? "کراپ ✓" : "کراپ", onClick: () => setSheet("crop") },
         { icon: Vibrate, label: selectedClip.stab ? "بی‌لرزش ✓" : "لرزش‌گیر", onClick: stabilizeSelected, accent: !!selectedClip.stab } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
         { icon: Palette, label: "فیلتر", onClick: () => setSheet("clip-look") },
         { icon: TrendingUp, label: selectedClip.enhance ? "کیفیت+ ✓" : "کیفیت+", onClick: toggleEnhance, accent: !!selectedClip.enhance } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
@@ -1299,6 +1405,7 @@ export function VideoView() {
         { icon: ArrowLeftRight, label: "ترنزیشن", onClick: () => setSheet("transition") },
         { icon: Layers, label: "کروما", onClick: () => setSheet("chroma") },
         { icon: SkipForward, label: "ادامه", onClick: () => setSheet("extend"), accent: isLastClip } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
+        { icon: PictureInPicture2, label: "به لایه", onClick: () => sendClipToOverlay(selectedClip.id) },
         { icon: Snowflake, label: "فریز", onClick: freezeSelected },
         { icon: Repeat, label: "معکوس", onClick: reverseSelected },
         { icon: Unplug, label: "جدا صدا", onClick: () => void detachAudioSelected() },
@@ -1309,11 +1416,15 @@ export function VideoView() {
     : selectedOverlay
       ? [
           { icon: Settings2, label: "زمان", onClick: () => setSheet("clip-basic") },
+          { icon: Crop, label: selectedOverlay?.crop && (selectedOverlay.crop.w < 0.999 || selectedOverlay.crop.h < 0.999) ? "کراپ ✓" : "کراپ", onClick: () => setSheet("crop") },
           { icon: Palette, label: "فیلتر", onClick: () => setSheet("clip-look") },
           { icon: Frame, label: "ماسک", onClick: () => setSheet("mask") },
           { icon: Diamond, label: selectedOverlay?.kf ? "کی‌فریم ✓" : "کی‌فریم", onClick: () => setSheet("kf"), accent: !!selectedOverlay?.kf } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
           { icon: FlipHorizontal2, label: "چرخش", onClick: () => setSheet("clip-motion") },
           { icon: Layers, label: "کروما", onClick: () => setSheet("chroma") },
+          { icon: BringToFront, label: "جلو", onClick: () => reorderSelectedOverlay("forward") },
+          { icon: SendToBack, label: "عقب", onClick: () => reorderSelectedOverlay("backward") },
+          { icon: ChevronsUp, label: "ترک اصلی", onClick: () => bringOverlayToMain(selectedOverlay.id) },
           { icon: ClipboardCopy, label: "رونوشت", onClick: () => void copySelectedToClipboard() },
           { icon: Copy, label: "تکرار", onClick: duplicateSelected },
           { icon: Trash2, label: "حذف", onClick: deleteSelected, danger: true },
@@ -1678,6 +1789,7 @@ export function VideoView() {
             {sheet === "media" && <MediaSheet ctx={ctx} />}
             {sheet === "aspect" && <AspectSheet ctx={ctx} />}
             {sheet === "clip-basic" && <ClipBasicSheet ctx={ctx} />}
+            {sheet === "crop" && <CropSheet ctx={ctx} />}
             {sheet === "clip-look" && <ClipLookSheet ctx={ctx} />}
             {sheet === "clip-motion" && <ClipMotionSheet ctx={ctx} />}
             {sheet === "transition" && <TransitionSheet ctx={ctx} />}

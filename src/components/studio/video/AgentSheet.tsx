@@ -57,7 +57,7 @@ export function AgentSheet({ ctx }: { ctx: EditorCtx }) {
     setOutcomes(null);
     try {
       const creds = byoCreds();
-      const snap = buildSnapshot(ctx.project);
+      const snap = buildSnapshot(ctx.project, [...ctx.assets.values()]);
       const res = await fetch("/api/ai/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,7 +70,7 @@ export function AgentSheet({ ctx }: { ctx: EditorCtx }) {
         return;
       }
       // اعتبارسنجی دوم روی کلاینت با snapshot زندهٔ همین لحظه
-      const v = validatePlan(j.plan, buildSnapshot(ctx.project));
+      const v = validatePlan(j.plan, buildSnapshot(ctx.project, [...ctx.assets.values()]));
       if (!v.ok) {
         setIssues(v.issues);
         setError("برنامه با وضعیت فعلی پروژه نمی‌خواند — پروژه را ذخیره/باز کن یا دستور را تکرار کن.");
@@ -171,7 +171,7 @@ export function AgentSheet({ ctx }: { ctx: EditorCtx }) {
       if (syncOps.length) {
         let results: CommandResult[] = [];
         ctx.mutate((p) => {
-          results = applySyncPlan(p, syncOps as Record<string, unknown>[]);
+          results = applySyncPlan(p, syncOps as Record<string, unknown>[], { assets: [...ctx.assets.values()] });
         });
         all.push(...results);
       }

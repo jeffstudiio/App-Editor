@@ -6,10 +6,12 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
-  ASPECTS, DEFAULT_FILTER, DEFAULT_TRANSFORM, FILTER_PRESETS, TRANSITIONS,
-  type Clip, type FilterState, type OverlayItem, type TransformState,
+  ASPECTS, DEFAULT_CROP, DEFAULT_FILTER, DEFAULT_TRANSFORM, FILTER_PRESETS, TRANSITIONS,
+  isCropped, sanitizeCrop,
+  type Clip, type CropState, type FilterState, type OverlayItem, type TransformState,
 } from "@/lib/video/types";
 import { cssFilter } from "@/lib/video/filters";
+import { replaceSource } from "@/lib/video/edit-ops";
 import type { EditorCtx } from "./ctx";
 
 // ── small building blocks ──
@@ -122,6 +124,9 @@ export function ClipBasicSheet({ ctx }: { ctx: EditorCtx }) {
         fmt={(v) => `${v.toFixed(2)}s`}
       />
       <p className="text-[11px] text-muted-foreground">مدت روی تایم‌لاین: {(dur / (clip.kind === "image" ? 1 : clip.speed)).toFixed(2)}s</p>
+
+      <SectionTitle>تعویض منبع (Replace)</SectionTitle>
+      <ReplaceSourceRow ctx={ctx} />
 
       {clip.kind === "video" && (
         <>
@@ -270,6 +275,77 @@ export function ClipMotionSheet({ ctx }: { ctx: EditorCtx }) {
   );
 }
 
+// ── crop واقعی (P0-M1): برش منبع که در پیش‌نمایش و خروجی هر دو اعمال می‌شود ──
+
+export function CropSheet({ ctx }: { ctx: EditorCtx }) {
+  const { clip, overlay } = useSelected(ctx);
+  const target = clip ?? overlay;
+  const isClip = !!clip;
+  if (!target) return <EmptyHint />;
+  const crop: CropState = target.crop ?? DEFAULT_CROP;
+  const active = isCropped(crop);
+
+  const setC = (patch: Partial<CropState>) => {
+    ctx.mutate((p) => {
+      if (isClip) {
+        const c = p.clips.find((x) => x.id === (clip as Clip).id);
+        if (c) c.crop = sanitizeCrop({ ...(c.crop ?? DEFAULT_CROP), ...patch });
+      } else {
+        const o = p.overlays.find((x) => x.id === (overlay as OverlayItem).id);
+        if (o) o.crop = sanitizeCrop({ ...(o.crop ?? DEFAULT_CROP), ...patch });
+      }
+    });
+  };
+
+  // پرست نسبت‌دار: کراپ وسط‌چین با نسبتِ فریم خروجی (برای کلیپ با ابعاد واقعی منبع)
+  const presetAspect = (aw: number, ah: number) => {
+    const srcW = clip?.srcW || 1080;
+    const srcH = clip?.srcH || 1920;
+    const srcAspect = srcW / srcH;
+    const want = aw / ah;
+    // کراپ = بزرگ‌ترین مستطیل وسط‌چین با نسبت want داخل منبع
+    let w = 1;
+    let h = 1;
+    if (srcAspect > want) {
+      w = want / srcAspect;
+    } else {
+      h = srcAspect / want;
+    }
+    const x = (1 - w) / 2;
+    const y = (1 - h) / 2;
+    setC({ x, y, w, h });
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-[11px] text-muted-foreground leading-5">
+        کراپ واقعی: لبه‌ها از منبع حذف می‌شوند و در فایل خروجی هم نمی‌آیند (برخلاف زوم). پیش‌نمایش همان لحظه به‌روز می‌شود.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {[ASPECTS.map((a) => ({ id: a.id, w: a.w, h: a.h, name: a.name }))].flat().map((a) => (
+          <button
+            key={a.id}
+            onClick={() => presetAspect(a.w, a.h)}
+            className={`text-xs px-3 py-1.5 rounded-lg border border-border bg-secondary/60 hover:border-primary`}
+          >
+            {a.name}
+          </button>
+        ))}
+        <button onClick={() => setC({ ...DEFAULT_CROP })} className="text-xs px-3 py-1.5 rounded-lg border border-border bg-secondary/60">
+          حذف کراپ
+        </button>
+      </div>
+      <SliderRow label="کراپ از چپ" value={crop.x} min={0} max={0.9} step={0.01} onChange={(v) => setC({ x: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+      <SliderRow label="کراپ از بالا" value={crop.y} min={0} max={0.9} step={0.01} onChange={(v) => setC({ y: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+      <SliderRow label="عرض کراپ" value={crop.w} min={0.1} max={1} step={0.01} onChange={(v) => setC({ w: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+      <SliderRow label="ارتفاع کراپ" value={crop.h} min={0.1} max={1} step={0.01} onChange={(v) => setC({ h: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+      <div className={`text-center text-xs rounded-lg py-2 ${active ? "bg-primary/10 text-primary" : "bg-secondary/40 text-muted-foreground"}`}>
+        {active ? `کراپ فعال: ${Math.round(crop.w * crop.h * 100)}٪ از فریم منبع` : "کراپی فعال نیست"}
+      </div>
+    </div>
+  );
+}
+
 // ── transition ──
 
 export function TransitionSheet({ ctx }: { ctx: EditorCtx }) {
@@ -381,5 +457,63 @@ function EmptyHint() {
     <p className="text-sm text-muted-foreground text-center py-6">
       اول از تایم‌لاین یک کلیپ یا لایه را انتخاب کن.
     </p>
+  );
+}
+
+// ── تعویض منبع کلیپ/لایه با رسانهٔ هم‌نوع از کتابخانه (P1-M2) ──
+function ReplaceSourceRow({ ctx }: { ctx: EditorCtx }) {
+  const { clip, overlay } = useSelected(ctx);
+  const target = clip ?? overlay;
+  if (!target) return null;
+  const candidates = [...ctx.assets.values()].filter((a) =>
+    target.kind === "video" ? a.type === "video" : a.type === "image"
+  );
+  const apply = (assetId: string) => {
+    const asset = ctx.assets.get(assetId);
+    if (!asset) return;
+    ctx.mutate((p) => {
+      const c = clip ? p.clips.find((x) => x.id === clip.id) : null;
+      const o = overlay ? p.overlays.find((x) => x.id === overlay.id) : null;
+      if (c) {
+        const res = replaceSource(
+          { assetId: c.assetId, kind: c.kind, in: c.in, out: c.out, srcDur: c.srcDur, speed: c.speed },
+          asset.id,
+          asset.type === "image" ? "image" : "video",
+          asset.duration || 10
+        );
+        if (!res.ok) return;
+        c.assetId = asset.id;
+        c.name = asset.name;
+        c.srcDur = asset.duration || 10;
+      } else if (o) {
+        if (asset.type === "image" ? o.kind !== "image" : o.kind !== "video") {
+          ctx.toast("نوع رسانه باید همان نوع قبلی باشد", "error");
+          return;
+        }
+        o.assetId = asset.id;
+        o.name = asset.name;
+        if (o.kind === "video") o.srcDur = asset.duration || o.srcDur;
+      }
+    });
+    ctx.toast(`منبع تعویض شد: ${asset.name}`, "success");
+  };
+  return (
+    <div className="space-y-2">
+      {candidates.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">رسانهٔ هم‌نوعی در کتابخانه نیست — اول از «رسانه» وارد کن.</p>
+      ) : (
+        <div className="max-h-40 overflow-y-auto space-y-1.5">
+          {candidates.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => apply(a.id)}
+              className={`w-full text-right text-xs px-3 py-2 rounded-lg border ${target.assetId === a.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-secondary/50"} ${a.id === target.assetId ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              {a.type === "video" ? "🎬" : "🖼️"} {a.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

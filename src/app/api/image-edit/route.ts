@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { AIError } from "@/lib/ai/core/ai-errors";
-import { base64Bytes, readJsonWithLimit } from "@/lib/ai/server/route-helpers";
+import { base64Bytes, readJsonWithLimit, sanitizeKeys } from "@/lib/ai/server/route-helpers";
 import { aiServer } from "@/lib/ai/server/registry";
 import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
 
@@ -48,12 +48,13 @@ export async function POST(req: NextRequest) {
 
     const apiKey = String(body.body?.apiKey ?? "").trim() || undefined;
     const model = String(body.body?.model ?? "").trim() || undefined;
+    const keys = sanitizeKeys(body.body?.keys);
     const prefer = body.body?.engine === "gemini" ? ("gemini" as const) : undefined;
 
     const { router } = aiServer();
     const result = await router.route(
       "image_editing",
-      { capability: "image_editing", prompt: prompt.slice(0, 1500), imageBase64, size, apiKey, model },
+      { capability: "image_editing", prompt: prompt.slice(0, 1500), imageBase64, size, apiKey, model, keys },
       { prefer },
     );
     if (result.output.kind !== "image") {

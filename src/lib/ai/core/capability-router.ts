@@ -33,6 +33,18 @@ export interface RouteOptions {
   bypassCache?: boolean;
 }
 
+/**
+ * R1: کلید per-provider — اگر نقشهٔ keys در درخواست بود، کلید همان provider
+ * جایگزین apiKey مشترک می‌شود تا کلید Gemini/OpenRouter به Jina/HF نشت نکند.
+ */
+function withOwnKey(req: AIRequest, id: ProviderId): AIRequest {
+  const keys = (req as { keys?: Partial<Record<ProviderId, string>> }).keys;
+  const own = keys?.[id];
+  const trimmed = own ? String(own).trim() : "";
+  if (!trimmed) return req;
+  return { ...req, apiKey: trimmed } as AIRequest;
+}
+
 export class CapabilityRouter {
   constructor(
     private registry: ProviderRegistry,
@@ -83,10 +95,12 @@ export class CapabilityRouter {
         attempts.push({ provider: id, ok: false, error: "ثبت نشده", code: "unavailable", skipped: true });
         continue;
       }
-      if (!provider.capabilities.includes(cap) || !provider.supports(cap, req)) {
+      // کلید مؤثر این provider: اختصاصیِ خودش از keys، وگرنه apiKey مشترک
+      const eff = withOwnKey(req, id);
+      if (!provider.capabilities.includes(cap) || !provider.supports(cap, eff)) {
         continue; // این provider این شکل از درخواست را اجرا نمی‌کند (مثلاً صدا پشتیبانی‌نشده)
       }
-      if (provider.requiresApiKey && !provider.isAvailable(req.apiKey)) {
+      if (provider.requiresApiKey && !provider.isAvailable(eff.apiKey)) {
         attempts.push({
           provider: id,
           ok: false,
@@ -99,7 +113,7 @@ export class CapabilityRouter {
 
       const startedAt = this.usage.start(id, cap);
       try {
-        const output = await provider.execute(req);
+        const output = await provider.execute(eff);
         this.usage.success(id, cap, startedAt);
         attempts.push({ provider: id, ok: true });
         if (cacheK) this.cache.set(cacheK, { output, providerId: id as ProviderId });

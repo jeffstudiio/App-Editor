@@ -206,3 +206,24 @@ export function buildSrt(lines: { text: string; start: number; end: number }[]):
     .map((l, i) => `${i + 1}\n${secondsToSrt(l.start)} --> ${secondsToSrt(l.end)}\n${l.text.trim()}\n`)
     .join("\n");
 }
+
+// ───────────── WebVTT helpers (P2-C5) ─────────────
+
+export function secondsToVtt(t: number): string {
+  const clamped = Math.max(0, t);
+  const h = Math.floor(clamped / 3600);
+  const m = Math.floor((clamped % 3600) / 60);
+  const s = Math.floor(clamped % 60);
+  const ms = Math.round((clamped - Math.floor(clamped)) * 1000);
+  const pad = (n: number, len = 2) => String(n).padStart(len, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms, 3)}`;
+}
+
+export function buildVtt(lines: { text: string; start: number; end: number }[]): string {
+  return (
+    "WEBVTT\n\n" +
+    lines
+      .map((l, i) => `${i + 1}\n${secondsToVtt(l.start)} --> ${secondsToVtt(l.end)}\n${l.text.trim()}\n`)
+      .join("\n")
+  );
+}

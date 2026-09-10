@@ -51,3 +51,20 @@ export function base64Bytes(b64: string): number {
   const cleaned = b64.startsWith("data:") ? b64.slice(b64.indexOf(",") + 1) : b64;
   return Math.ceil((cleaned.length * 3) / 4);
 }
+
+/**
+ * R1: نقشهٔ کلید per-provider را از بدنهٔ درخواست تمیز می‌کند.
+ * فقط providerهای شناخته‌شدهٔ کلیددار؛ بقیهٔ فیلدها دور ریخته می‌شوند.
+ */
+const KEYED_PROVIDERS = ["gemini", "openrouter", "groq", "huggingface", "jina"] as const;
+
+export function sanitizeKeys(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const pid of KEYED_PROVIDERS) {
+    const v = String(r[pid] ?? "").trim();
+    if (v) out[pid] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
+}

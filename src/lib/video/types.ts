@@ -159,6 +159,36 @@ export const MASK_SHAPES: { id: MaskShape; name: string; emoji: string }[] = [
   { id: "heart", name: "قلب", emoji: "💗" },
 ];
 
+/**
+ * Crop واقعی — مستطیل نرمال‌شدهٔ منبع (0..1 نسبت به عرض/ارتفاع فریم منبع).
+ * در پیش‌نمایش و خروجی هر دو با drawImage(sx,sy,sw,sh) اعمال می‌شود؛
+ * پس برخلاف «زوم»، لبه‌ها واقعاً حذف می‌شوند و در فایل نهایی هم نمی‌آیند.
+ */
+export interface CropState {
+  x: number; // 0..0.9 — آفست چپ
+  y: number; // 0..0.9 — آفست بالا
+  w: number; // 0.1..1 — عرض
+  h: number; // 0.1..1 — ارتفاع
+}
+
+export const DEFAULT_CROP: CropState = { x: 0, y: 0, w: 1, h: 1 };
+
+/** آیا کراپ فعال است؟ (غیرِ پیش‌فرض) */
+export function isCropped(c: CropState | undefined): boolean {
+  return !!c && (c.x > 0.001 || c.y > 0.001 || c.w < 0.999 || c.h < 0.999);
+}
+
+/** کراپ امن و clamp شده (برای ورودی UI/agent/JSON) */
+export function sanitizeCrop(c: unknown): CropState {
+  const r = (c ?? {}) as Record<string, unknown>;
+  const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  const x = Math.min(0.9, Math.max(0, num(r.x, 0)));
+  const y = Math.min(0.9, Math.max(0, num(r.y, 0)));
+  const w = Math.min(1 - x, Math.max(0.1, num(r.w, 1)));
+  const h = Math.min(1 - y, Math.max(0.1, num(r.h, 1)));
+  return { x, y, w, h };
+}
+
 /** Digital stabilization analysis result (per-frame counter-offsets). */
 export interface StabData {
   fps: number; // sampled analysis fps
@@ -193,6 +223,7 @@ export interface Clip {
   reverse?: { frames: string[]; fps: number };
   stab?: StabData;
   mask?: MaskState;
+  crop?: CropState; // کراپ واقعی منبع (P0)
   enhance?: boolean; // «ارتقای کیفیت» — contrast/saturation clarity boost
   /** keyframeهای ترنسفورم — زمان‌ها نسبت به شروع کلیپ */
   kf?: KeyframeMap;
@@ -224,8 +255,20 @@ export interface TextItem {
   opacity: number;
   karaoke: boolean; // word-by-word highlight
   isCaption?: boolean;
+  /**
+   * تایمینگ واقعی کلمه‌ها (ثانیهٔ تایم‌لاین) — از forced-alignment انرژی‌محور
+   * روی صدای ASR ساخته می‌شود. وقتی موجود است کارائوکه واقعی است؛
+   * وقتی نیست، هایلایت نسبتی (تقریبی) استفاده می‌شود.
+   */
+  words?: WordTiming[];
   /** keyframeهای opacity/pos/scale — زمان‌ها نسبت به start */
   kf?: KeyframeMap;
+}
+
+export interface WordTiming {
+  w: string;
+  start: number; // ثانیهٔ تایم‌لاین
+  end: number;
 }
 
 export type VoiceEffect = "none" | "echo" | "deep" | "chipmunk";
@@ -260,6 +303,7 @@ export interface OverlayItem {
   filter: FilterState;
   chroma: ChromaState;
   mask?: MaskState;
+  crop?: CropState; // کراپ واقعی برای لایهٔ رویی
   /** keyframeهای ترنسفورم — زمان‌ها نسبت به start */
   kf?: KeyframeMap;
 }
@@ -333,6 +377,7 @@ export function normalizeProject(raw: unknown): Project {
       reverse: c.reverse && typeof c.reverse === "object" ? (c.reverse as Clip["reverse"]) : undefined,
       stab: c.stab && typeof c.stab === "object" ? (c.stab as StabData) : undefined,
       mask: mk(c.mask),
+      crop: c.crop && typeof c.crop === "object" ? sanitizeCrop(c.crop) : undefined,
       enhance: Boolean(c.enhance),
       kf: c.kf && typeof c.kf === "object" ? (c.kf as Clip["kf"]) : undefined,
     } satisfies Clip;
@@ -353,6 +398,7 @@ export function normalizeProject(raw: unknown): Project {
       filter: fl(o.filter),
       chroma: ch(o.chroma),
       mask: mk(o.mask),
+      crop: o.crop && typeof o.crop === "object" ? sanitizeCrop(o.crop) : undefined,
       kf: o.kf && typeof o.kf === "object" ? (o.kf as OverlayItem["kf"]) : undefined,
     } satisfies OverlayItem;
   });
@@ -388,6 +434,14 @@ export function normalizeProject(raw: unknown): Project {
       opacity: num(t.opacity, 1),
       karaoke: Boolean(t.karaoke),
       isCaption: Boolean(t.isCaption),
+      words: Array.isArray(t.words)
+        ? (t.words as unknown[])
+            .map((w0) => {
+              const w = (w0 ?? {}) as Record<string, unknown>;
+              return { w: String(w.w ?? ""), start: num(w.start, 0), end: num(w.end, 0) };
+            })
+            .filter((w) => w.w && w.end > w.start)
+        : undefined,
       kf: t.kf && typeof t.kf === "object" ? (t.kf as TextItem["kf"]) : undefined,
     } satisfies TextItem;
   });

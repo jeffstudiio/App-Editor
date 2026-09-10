@@ -33,6 +33,8 @@ export interface ChatMessage {
   content: string;
 }
 
+export type ProviderKeyMap = Partial<Record<ProviderId, string>>;
+
 /** درخواست یکپارچه — متمایز بر اساس capability */
 export type AIRequest =
   | {
@@ -44,8 +46,10 @@ export type AIRequest =
       jsonMode?: boolean;
       model?: string;
       apiKey?: string;
+      /** کلید اختصاصی هر provider (R1) — کلید گوگل به Jina نمی‌رسد */
+      keys?: ProviderKeyMap;
     }
-  | { capability: "image_generation"; prompt: string; size?: string; model?: string; apiKey?: string }
+  | { capability: "image_generation"; prompt: string; size?: string; model?: string; apiKey?: string; keys?: ProviderKeyMap }
   | {
       capability: "image_editing";
       prompt: string;
@@ -53,10 +57,11 @@ export type AIRequest =
       size?: string;
       model?: string;
       apiKey?: string;
+      keys?: ProviderKeyMap;
     }
-  | { capability: "speech_to_text"; audioBase64: string; model?: string; apiKey?: string }
-  | { capability: "text_to_speech"; text: string; voice?: string; speed?: number; model?: string; apiKey?: string }
-  | { capability: "embeddings"; texts: string[]; model?: string; apiKey?: string };
+  | { capability: "speech_to_text"; audioBase64: string; model?: string; apiKey?: string; keys?: ProviderKeyMap }
+  | { capability: "text_to_speech"; text: string; voice?: string; speed?: number; model?: string; apiKey?: string; keys?: ProviderKeyMap }
+  | { capability: "embeddings"; texts: string[]; model?: string; apiKey?: string; keys?: ProviderKeyMap };
 
 export type AIOutput =
   | { kind: "text"; text: string }

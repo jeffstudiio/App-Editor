@@ -18,7 +18,12 @@ export function presetToCaptionPatch(pr: SubtitlePreset): Partial<TextItem> {
   };
 }
 
-export function captionTextItem(text: string, start: number, end: number): TextItem {
+export function captionTextItem(
+  text: string,
+  start: number,
+  end: number,
+  words?: { w: string; start: number; end: number }[]
+): TextItem {
   const base = presetToCaptionPatch(SUBTITLE_PRESETS[0]);
   return {
     id: uid("tx"),
@@ -33,6 +38,7 @@ export function captionTextItem(text: string, start: number, end: number): TextI
     opacity: 1,
     karaoke: true,
     isCaption: true,
+    ...(words && words.length ? { words } : {}),
     ...base,
   } as TextItem;
 }

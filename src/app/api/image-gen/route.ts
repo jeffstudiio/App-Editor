@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AIError } from "@/lib/ai/core/ai-errors";
 import { aiServer } from "@/lib/ai/server/registry";
 import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
-import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
+import { readJsonWithLimit, sanitizeKeys } from "@/lib/ai/server/route-helpers";
 
 export const maxDuration = 180;
 
@@ -44,12 +44,13 @@ export async function POST(req: NextRequest) {
 
     const apiKey = String(body.body?.apiKey ?? "").trim() || undefined;
     const model = String(body.body?.model ?? "").trim() || undefined;
+    const keys = sanitizeKeys(body.body?.keys);
     const prefer = body.body?.engine === "gemini" ? ("gemini" as const) : undefined;
 
     const { router } = aiServer();
     const result = await router.route(
       "image_generation",
-      { capability: "image_generation", prompt: prompt.slice(0, 1500), size, apiKey, model },
+      { capability: "image_generation", prompt: prompt.slice(0, 1500), size, apiKey, model, keys },
       { prefer },
     );
     if (result.output.kind !== "image") {

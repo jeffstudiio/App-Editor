@@ -365,11 +365,18 @@ export function drawTextItem(
   grad.addColorStop(0.5, item.color);
   grad.addColorStop(1, "#a78bfa");
 
-  // karaoke progress
+  // karaoke — واقعی: اگر تایمینگ کلمه‌ها (هم‌ترازی انرژی صدا) موجود باشد،
+  // کلمهٔ فعال از روی زمان واقعی گفته‌شدنش انتخاب می‌شود؛ وگرنه fallback نسبتی (تقریبی)
   let activeIdx = -1;
   if (item.karaoke) {
-    const p = (t - item.start) / Math.max(0.2, item.end - item.start);
-    activeIdx = Math.min(words.length - 1, Math.floor(p * words.length));
+    const wt = item.words;
+    if (wt && wt.length > 0) {
+      activeIdx = wt.findIndex((x) => t >= x.start && t < x.end);
+      if (activeIdx < 0 && t >= (wt[wt.length - 1]?.end ?? 0)) activeIdx = wt.length - 1;
+    } else {
+      const p = (t - item.start) / Math.max(0.2, item.end - item.start);
+      activeIdx = Math.min(words.length - 1, Math.floor(p * words.length));
+    }
   }
 
   let xRight = total / 2;

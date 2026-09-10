@@ -61,11 +61,21 @@ export function aiServer(): AiServerState {
   return globalRef.__jeffAi;
 }
 
-/** استخراج اعتبارنامه‌های BYO از بدنهٔ درخواست (فقط سرور) */
-export function credsOf(body: Record<string, unknown>): { apiKey?: string; model?: string } {
+/** استخراج اعتبارنامه‌های BYO از بدنهٔ درخواست (فقط سرور) — R1: + نقشهٔ کلید per-provider */
+export function credsOf(body: Record<string, unknown>): {
+  apiKey?: string;
+  model?: string;
+  keys?: Partial<Record<ProviderId, string>>;
+} {
   const apiKey = String(body?.apiKey ?? "").trim() || undefined;
   const model = String(body?.model ?? "").trim() || undefined;
-  return { apiKey, model };
+  const rawKeys = (body?.keys ?? {}) as Record<string, unknown>;
+  const keys: Partial<Record<ProviderId, string>> = {};
+  for (const pid of ["gemini", "openrouter", "groq", "huggingface", "jina"] as const) {
+    const v = String(rawKeys[pid] ?? "").trim();
+    if (v) keys[pid] = v;
+  }
+  return { apiKey, model, keys: Object.keys(keys).length ? keys : undefined };
 }
 
 export type { ProviderId };

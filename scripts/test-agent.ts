@@ -232,7 +232,76 @@ function sampleProject(): Project {
 {
   eq("describe aspect", describeOperationFa({ tool: "set_aspect", aspect: "9:16" }), "تغییر نسبت تصویر (9:16)");
   eq("describe speed", describeOperationFa({ tool: "change_speed", clipId: "clip_1", speed: 2 }), "تغییر سرعت (clip_1، سرعت ×2)");
-  ok("catalog complete", Object.keys(CommandParams).length >= 24);
+  ok("catalog complete", Object.keys(CommandParams).length >= 29);
+}
+
+// ── ۸) دستورهای جدید P0/P1: crop / replace / بین‌ترک ──
+{
+  const p = sampleProject();
+  const assets: MediaAsset[] = [
+    { id: "asset_clip_01", type: "video", url: "blob:x", name: "ویدئوی الف", duration: 12, width: 1080, height: 1920 },
+    { id: "img1", type: "image", url: "blob:y", name: "عکس ب", duration: 10, width: 1080, height: 1920 },
+  ];
+
+  // crop_clip — کراپ واقعی
+  const r1 = applySyncCommand(p, { tool: "crop_clip", clipId: "clip_01", x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
+  ok("crop_clip ok", r1.ok);
+  eq("crop_clip value", p.clips[0].crop?.w, 0.8);
+  const r1b = applySyncCommand(p, { tool: "crop_clip", clipId: "ناموجود", x: 0, y: 0, w: 1, h: 1 });
+  ok("crop_clip missing clip fails", !r1b.ok);
+
+  // reset_crop
+  const r2 = applySyncCommand(p, { tool: "reset_crop", clipId: "clip_01" });
+  ok("reset_crop ok", r2.ok);
+  eq("reset_crop cleared", p.clips[0].crop, undefined);
+  const r2b = applySyncCommand(p, { tool: "reset_crop", clipId: "clip_01" });
+  ok("reset_crop twice fails honestly", !r2b.ok);
+
+  // replace_clip — با کلید واقعی
+  const r3 = applySyncCommand(p, { tool: "replace_clip", clipId: "clip_01", assetId: "asset_clip_01" }, { assets });
+  ok("replace_clip ok", r3.ok);
+  eq("replace_clip asset", p.clips.find((c) => c.id === "clip_01")?.assetId, "asset_clip_01");
+  const r3b = applySyncCommand(p, { tool: "replace_clip", clipId: "clip_01", assetId: "img1" }, { assets });
+  ok("replace_clip kind mismatch fails", !r3b.ok);
+  const r3c = applySyncCommand(p, { tool: "replace_clip", clipId: "clip_01", assetId: "asset_clip_01" });
+  ok("replace_clip without assets fails honestly", !r3c.ok);
+
+  // to_overlay — کلیپ دوم به لایهٔ رویی
+  const r4 = applySyncCommand(p, { tool: "to_overlay", clipId: "clip_02" });
+  ok("to_overlay ok", r4.ok);
+  eq("to_overlay clips count", p.clips.length, 2);
+  eq("to_overlay overlay start", p.overlays[0].start, 4); // بعد از clip_01 (۴ ثانیه)
+  eq("to_overlay keeps srcIn", p.overlays[0].srcIn, 0);
+  eq("to_overlay keeps transform", p.overlays[0].transform.scale, 1);
+
+  // to_main_track — برگشت همان لایه با برش خودکار
+  const overlayId = p.overlays[0].id;
+  const r5 = applySyncCommand(p, { tool: "to_main_track", id: overlayId });
+  ok("to_main_track ok", r5.ok);
+  eq("to_main_track overlays empty", p.overlays.length, 0);
+  eq("to_main_track clips count", p.clips.length, 3); // clip_01 + لایهٔ درج‌شده در 4s + clip_03
+  eq("to_main_track inserted kind", p.clips[1].kind, "video");
+  eq("to_main_track inserted in", p.clips[1].in, 0);
+  eq("to_main_track keeps out bound", p.clips[1].out <= p.clips[1].srcDur, true);
+
+  // validator: replace_clip با asset واقعی/جعلی + kind mismatch
+  const snap = buildSnapshot(p, assets);
+  ok("snapshot has assets", snap.assets?.length === 2);
+  ok("snapshot has overlayIds field", Array.isArray(snap.overlayIds));
+  const v1 = validatePlan({ intent: "t", operations: [{ tool: "replace_clip", clipId: p.clips[0].id, assetId: "asset_clip_01" }] }, snap);
+  ok("validate replace real asset", v1.ok);
+  const v2 = validatePlan({ intent: "t", operations: [{ tool: "replace_clip", clipId: p.clips[0].id, assetId: "fake_asset" }] }, snap);
+  ok("validate replace fake asset rejected", !v2.ok);
+  const imgClip = p.clips.find((c) => c.kind === "image");
+  if (imgClip) {
+    const v3 = validatePlan({ intent: "t", operations: [{ tool: "replace_clip", clipId: imgClip.id, assetId: "asset_clip_01" }] }, snap);
+    ok("validate replace kind mismatch rejected", !v3.ok);
+  }
+  // planner prompt شامل ابزارهای جدید
+  const sys = buildPlannerSystemPrompt(null);
+  ok("prompt has crop_clip", sys.includes("crop_clip"));
+  ok("prompt has replace_clip", sys.includes("replace_clip"));
+  ok("prompt has to_main_track", sys.includes("to_main_track"));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

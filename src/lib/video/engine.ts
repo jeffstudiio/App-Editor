@@ -15,6 +15,7 @@ import {
   type StabData,
 } from "./types";
 import { evalKf } from "./keyframes";
+import { DEFAULT_CROP, isCropped } from "./types";
 import { buildMaskPath, chromaFrame, cssFilter, drawTempOverlay, drawTextItem, drawVignette, enhancedFilter, maskFrame } from "./filters";
 
 type Tick = (t: number, playing: boolean) => void;
@@ -465,6 +466,14 @@ export class EditorEngine {
         }
       }
 
+      // crop واقعی (P0): مستطیل منبع نرمال‌شده — لبه‌ها واقعاً حذف می‌شوند
+      const cropped = isCropped(clip.crop);
+      const cr = clip.crop ?? DEFAULT_CROP;
+      const sx = cropped ? srcW * cr.x : 0;
+      const sy = cropped ? srcH * cr.y : 0;
+      const sw = cropped ? srcW * cr.w : srcW;
+      const sh = cropped ? srcH * cr.h : srcH;
+
       // mask: feathered → pre-process frame; hard → clip path at draw time
       let hardMask: Clip["mask"] = undefined;
       if (clip.mask && clip.mask.shape !== "none") {
@@ -484,15 +493,19 @@ export class EditorEngine {
       );
       ctx.rotate((tf.rotate * Math.PI) / 180);
       ctx.scale(tf.scale * (tf.flipH ? -1 : 1), tf.scale * (tf.flipV ? -1 : 1));
-      const dw = srcW * base;
-      const dh = srcH * base;
+      const dw = sw * base;
+      const dh = sh * base;
       try {
         if (hardMask) {
           ctx.save();
           buildMaskPath(ctx, hardMask.shape, dw * hardMask.size, dh * hardMask.size);
           ctx.clip();
         }
-        ctx.drawImage(drawSource, -dw / 2, -dh / 2, dw, dh);
+        if (cropped) {
+          ctx.drawImage(drawSource, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+        } else {
+          ctx.drawImage(drawSource, -dw / 2, -dh / 2, dw, dh);
+        }
         if (hardMask) ctx.restore();
       } catch {}
       ctx.filter = "none";
@@ -584,20 +597,30 @@ export class EditorEngine {
       }
     }
 
-    const base = Math.min(W / srcW, H / srcH); // contain
+    const croppedOv = isCropped(ov.crop);
+    const crOv = ov.crop ?? DEFAULT_CROP;
+    const sxOv = croppedOv ? srcW * crOv.x : 0;
+    const syOv = croppedOv ? srcH * crOv.y : 0;
+    const swOv = croppedOv ? srcW * crOv.w : srcW;
+    const shOv = croppedOv ? srcH * crOv.h : srcH;
+    const base = Math.min(W / swOv, H / shOv); // contain
     const tf = otf;
     ctx.translate(W / 2 + tf.x * W, H / 2 + tf.y * H);
     ctx.rotate((tf.rotate * Math.PI) / 180);
     ctx.scale(tf.scale * (tf.flipH ? -1 : 1), tf.scale * (tf.flipV ? -1 : 1));
-    const dw = srcW * base;
-    const dh = srcH * base;
+    const dw = swOv * base;
+    const dh = shOv * base;
     try {
       if (ovHardMask) {
         ctx.save();
         buildMaskPath(ctx, ovHardMask.shape, dw * ovHardMask.size, dh * ovHardMask.size);
         ctx.clip();
       }
-      ctx.drawImage(drawSource, -dw / 2, -dh / 2, dw, dh);
+      if (croppedOv) {
+        ctx.drawImage(drawSource, sxOv, syOv, swOv, shOv, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        ctx.drawImage(drawSource, -dw / 2, -dh / 2, dw, dh);
+      }
       if (ovHardMask) ctx.restore();
     } catch {}
     ctx.filter = "none";

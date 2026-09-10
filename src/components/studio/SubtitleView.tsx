@@ -9,7 +9,7 @@ import {
   SUBTITLE_PRESETS,
   type SubtitleStyle,
 } from "@/lib/studio-data";
-import { drawSubtitle, buildSrt } from "@/lib/subtitle-render";
+import { drawSubtitle, buildSrt, buildVtt } from "@/lib/subtitle-render";
 import { transcribeMedia } from "@/lib/video/asr-client";
 
 interface Line {
@@ -166,6 +166,17 @@ export function SubtitleView() {
     const srt = buildSrt(valid);
     downloadBlob(new Blob(["\ufeff" + srt], { type: "text/plain;charset=utf-8" }), "subtitles.srt");
     toast.success("فایل SRT دانلود شد");
+  };
+
+  const exportVtt = () => {
+    const valid = lines.filter((l) => l.text.trim());
+    if (valid.length === 0) {
+      toast.error("هیچ خطی برای خروجی وجود نداره");
+      return;
+    }
+    const vtt = buildVtt(valid);
+    downloadBlob(new Blob(["\ufeff" + vtt], { type: "text/vtt;charset=utf-8" }), "subtitles.vtt");
+    toast.success("فایل VTT دانلود شد");
   };
 
   const exportPng = useCallback(
@@ -489,6 +500,13 @@ export function SubtitleView() {
         >
           <Download size={17} className="text-primary" />
           <span className="text-[10px] text-muted-foreground">خروجی SRT</span>
+        </button>
+        <button
+          onClick={exportVtt}
+          className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-card py-3.5 hover:border-primary/40 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+        >
+          <Download size={17} className="text-primary" />
+          <span className="text-[10px] text-muted-foreground">خروجی VTT</span>
         </button>
         <button
           onClick={() => exportPng(previewText, `subtitle-${Date.now()}.png`)}

@@ -53,10 +53,23 @@ export function validatePlan(
     if ("clipId" in op && typeof op.clipId === "string" && !snapshot.clipIds.includes(op.clipId)) {
       issues.push(`عملیات ${i + 1}: کلیپ ${op.clipId} در پروژه نیست.`);
     }
-    // id فقط در دستورهای کی‌فریم به آیتم پروژه اشاره می‌کند (add_sfx id نوع افکت است)
-    const idTargetsItem = op.tool === "add_keyframe" || op.tool === "remove_keyframe";
-    if (idTargetsItem && "id" in op && typeof op.id === "string" && !snapshot.allItemIds.includes(op.id)) {
-      issues.push(`عملیات ${i + 1}: آیتم ${op.id} در پروژه نیست.`);
+    // id فقط در دستورهای کی‌فریم و to_main_track به آیتم پروژه اشاره می‌کند (add_sfx id نوع افکت است)
+    if (op.tool === "add_keyframe" || op.tool === "remove_keyframe" || op.tool === "to_main_track") {
+      if ("id" in op && typeof op.id === "string" && !snapshot.allItemIds.includes(op.id)) {
+        issues.push(`عملیات ${i + 1}: آیتم ${op.id} در پروژه نیست.`);
+      }
+    }
+    // replace_clip: assetId باید واقعاً در کتابخانه باشد و نوعش با کلیپ بخواند
+    if (op.tool === "replace_clip" && typeof op.assetId === "string" && typeof op.clipId === "string") {
+      const asset = snapshot.assets?.find((a) => a.id === op.assetId);
+      if (!asset) {
+        issues.push(`عملیات ${i + 1}: رسانهٔ ${op.assetId} در کتابخانهٔ پروژه نیست. فقط از assets واقعی استفاده کن.`);
+      } else {
+        const clip = snapshot.clips.find((c) => c.id === op.clipId);
+        if (clip && ((clip.kind === "video" && asset.type !== "video") || (clip.kind === "image" && asset.type !== "image"))) {
+          issues.push(`عملیات ${i + 1}: نوع رسانهٔ جایگزین باید ${clip.kind === "video" ? "video" : "image"} باشد.`);
+        }
+      }
     }
   }
   return issues.length ? { ok: false, issues } : { ok: true, plan: parsed.data };
@@ -83,4 +96,8 @@ export interface PlanContextSnapshot {
   hasCaptions: boolean;
   hasMusic: boolean;
   allItemIds: string[];
+  /** لایه‌های رویی — هدف to_main_track */
+  overlayIds?: string[];
+  /** کتابخانهٔ رسانهٔ سبک — منبع replace_clip */
+  assets?: { id: string; name: string; type: string; duration: number }[];
 }

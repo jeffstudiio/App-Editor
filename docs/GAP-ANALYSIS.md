@@ -3,6 +3,8 @@
 > ورودی: CURRENT-IMPLEMENTATION-AUDIT.md + REALITY-MATRIX.md
 > قاعده: **هیچ چیزِ واقعی و کارکردی بدون دلیل خراب نشود.** اولویت‌بندی: P0 حیاتی → P1 هسته → P2 مهم → P3 آینده.
 
+> ✅ **وضعیت Sprint تبدیل محصول (به‌روز):** A2 (کراپ واقعی) · A3 · B1 (C2 موشن قالب→کی‌فریم) · B2 (M2 بین‌ترک+z-order+replace) · B3 (C1/M6 کارائوکهٔ واقعی با word-align انرژی‌محور) · B4 (M5 CI) · B5 (R1 کلید per-provider) — **همه انجام شد.** P2 سریع: C5 (VTT) · C8 (برش روی مارکر) · M3 نیمه (60fps) · برچسب صادقانهٔ C9 — انجام شد. باقی: C3/C4/C6/C7 + M3 WebM/M4/M7/M8/M9/M10 (P2) و فاز Platform (P3). جزئیات: CURRENT-STATUS.md
+
 ---
 
 ## ۱) Already complete — به این‌ها دست نزنید

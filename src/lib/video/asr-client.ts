@@ -1,7 +1,10 @@
 // ─────────────────────────────────────────────────────────────
 // Client-side speech extraction for auto-captions:
 // decode audio → energy-based VAD → per-segment WAV → /api/transcribe
+// + word-level forced alignment (انرژی‌محور، محلی) برای کارائوکهٔ واقعی
 // ─────────────────────────────────────────────────────────────
+
+import { alignAllSegments, type WordTiming } from "./word-align";
 
 export interface SpeechSegment {
   start: number;
@@ -10,6 +13,8 @@ export interface SpeechSegment {
 
 export interface CaptionSegment extends SpeechSegment {
   text: string;
+  /** تایمینگ واقعی کلمه‌ها (ثانیهٔ منبع) — از هم‌ترازی انرژی صدا */
+  words?: WordTiming[];
 }
 
 /** Decode any media blob into a mono Float32 signal + sample rate. */
@@ -221,6 +226,16 @@ export async function transcribeMedia(
     const text = String(json.text).trim();
     if (text) out.push({ ...seg, text });
   }
+
+  // کارائوکهٔ واقعی: هم‌ترازی کلمه‌به‌کلمه روی انرژی صدا (محلی، قطعی)
+  // اگر بعداً ASR word-level داد، اینجا override می‌شود؛ فعلاً این تنها لایهٔ صادقانهٔ موجود است.
+  try {
+    const timed = alignAllSegments(data, sampleRate, out);
+    for (let i = 0; i < out.length; i++) out[i].words = timed[i];
+  } catch {
+    // بدون هم‌ترازی، هایلایت نسبتی (تقریبی) استفاده می‌شود — کارائوکه می‌ماند اما تقریبی
+  }
+
   onProgress({ phase: "transcribe", done: segments.length, total: segments.length });
   return out;
 }

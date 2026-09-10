@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "پیام خالی است." }, { status: 400 });
     }
 
-    const { apiKey, model } = credsOf(body);
+    const { apiKey, model, keys } = credsOf(body);
     const prefer =
       body?.provider === "openrouter" || body?.provider === "gemini" ? (body.provider as "openrouter" | "gemini") : undefined;
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     try {
       result = await router.route(
         "text_generation",
-        { capability: "text_generation", messages: chatMessages, model, apiKey },
+        { capability: "text_generation", messages: chatMessages, model, apiKey, keys },
         { prefer },
       );
     } catch (err) {

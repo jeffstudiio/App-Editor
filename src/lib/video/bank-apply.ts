@@ -8,8 +8,9 @@ import type { BankTemplate, Scene } from "@/lib/template-bank/schema";
 import {
   DEFAULT_FILTER, DEFAULT_TRANSFORM, FILTER_PRESETS, uid,
   type AudioItem, type Clip, type FilterState, type MediaAsset, type Project,
-  type TextItem, type TransitionType,
+  type TextItem, type TransformState, type TransitionType,
 } from "./types";
+import type { Keyframe, KeyframeMap } from "./keyframes";
 import type { PendingBankPayload } from "./transfer";
 
 const ASPECT_DIMS: Record<string, { w: number; h: number }> = {
@@ -49,6 +50,92 @@ const TEXT_ANIM_MAP: Record<string, TextItem["animIn"]> = {
   slideSide: "slideUp",
   wipeUp: "slideUp",
 };
+
+// ─────────────────────────────────────────────────────────────
+// C2 (P1): موشن قالب ← کی‌فریم واقعی ادیتور
+// قبلاً scene.motion در تحویل به ادیتور ساکت دور ریخته می‌شد (MOCK).
+// حالا هر موشن بانک به وضعیت شروع + KeyframeMap واقعی ترجمه می‌شود تا
+// پیش‌نمایش ادیتور و خروجی MP4 دقیقاً همان حرکتی را ببینند که پخش‌کنندهٔ بانک نشان می‌داد.
+// (ارقام عین فرمول‌های motions.ts هستند — CSS % ≈ کسر عرض فریم)
+// ─────────────────────────────────────────────────────────────
+const kf = (t: number, v: number, ease: Keyframe["ease"] = "out"): Keyframe => ({ t, v, ease });
+
+export function motionTransform(motion: string, dur: number): { transform: TransformState; kf?: KeyframeMap } {
+  const D = Math.max(0.2, dur);
+  const base = (): TransformState => ({ ...DEFAULT_TRANSFORM });
+  switch (motion) {
+    case "kenburnsIn":
+      return { transform: { ...base(), scale: 1.02 }, kf: { scale: [kf(0, 1.02), kf(D, 1.16)] } };
+    case "kenburnsOut":
+      return { transform: { ...base(), scale: 1.18 }, kf: { scale: [kf(0, 1.18), kf(D, 1.04)] } };
+    case "panL":
+      return { transform: { ...base(), scale: 1.16 }, kf: { x: [kf(0, 0), kf(D, 0.06)] } };
+    case "panR":
+      return { transform: { ...base(), scale: 1.16 }, kf: { x: [kf(0, 0), kf(D, -0.06)] } };
+    case "panU":
+      return { transform: { ...base(), scale: 1.16 }, kf: { y: [kf(0, 0), kf(D, 0.06)] } };
+    case "panD":
+      return { transform: { ...base(), scale: 1.16 }, kf: { y: [kf(0, 0), kf(D, -0.06)] } };
+    case "driftLU":
+      return { transform: { ...base(), scale: 1.2 }, kf: { x: [kf(0, 0), kf(D, 0.04)], y: [kf(0, 0), kf(D, 0.04)] } };
+    case "driftRU":
+      return { transform: { ...base(), scale: 1.2 }, kf: { x: [kf(0, 0), kf(D, -0.04)], y: [kf(0, 0), kf(D, -0.04)] } };
+    case "dollyIn":
+      return { transform: { ...base(), scale: 1 }, kf: { scale: [kf(0, 1, "in"), kf(D, 1.22, "in")] } };
+    case "dollyOut":
+      return { transform: { ...base(), scale: 1.24 }, kf: { scale: [kf(0, 1.24, "in"), kf(D, 1.02, "in")] } };
+    case "zoomPulse": {
+      // |sin(p·π·4)| — ۴ ضرب؛ نمونه‌برداری روی قله/دره
+      const scale: Keyframe[] = [];
+      for (let i = 0; i <= 8; i++) {
+        const p = i / 8;
+        scale.push(kf(p * D, 1.04 + Math.abs(Math.sin(p * Math.PI * 4)) * 0.05, "linear"));
+      }
+      return { transform: { ...base(), scale: 1.04 }, kf: { scale } };
+    }
+    case "handheld": {
+      // لرزش آهستهٔ دست‌دار — نمونه‌برداری ۹ نقطه‌ای از فرمول CSS
+      const xs: Keyframe[] = [];
+      const ys: Keyframe[] = [];
+      const rs: Keyframe[] = [];
+      for (let i = 0; i <= 8; i++) {
+        const p = i / 8;
+        const x = Math.sin(p * Math.PI * 6) * 0.007;
+        const y = Math.cos(p * Math.PI * 4.3) * 0.006;
+        xs.push(kf(p * D, x, "linear"));
+        ys.push(kf(p * D, y, "linear"));
+        rs.push(kf(p * D, x * 0.3, "linear"));
+      }
+      return { transform: { ...base(), scale: 1.1 }, kf: { x: xs, y: ys, rotate: rs } };
+    }
+    case "breathe": {
+      const scale = [0, 0.25, 0.5, 0.75, 1].map((p) =>
+        kf(p * D, 1.03 + Math.sin(p * Math.PI * 2) * 0.025, "linear")
+      );
+      return { transform: { ...base(), scale: 1.03 }, kf: { scale } };
+    }
+    case "floatY": {
+      const ys = [0, 1 / 6, 1 / 3, 1 / 2, 2 / 3, 5 / 6, 1].map((p) =>
+        kf(p * D, Math.sin(p * Math.PI * 3) * -0.015, "linear")
+      );
+      return { transform: { ...base(), scale: 1.08 }, kf: { y: ys } };
+    }
+    case "tiltL":
+      return { transform: { ...base(), scale: 1.22 }, kf: { rotate: [kf(0, 0), kf(D, 1.6)] } };
+    case "tiltR":
+      return { transform: { ...base(), scale: 1.22 }, kf: { rotate: [kf(0, 0), kf(D, -1.6)] } };
+    case "sweepFocus":
+      // جزء فیلتر موشن در ادیتور قابل‌انیمیشن نیست (فقط transform) — مقیاس ثابت، صادقانه
+      return { transform: { ...base(), scale: 1.06 } };
+    case "warmGlowIn":
+      return { transform: { ...base(), scale: 1.05 }, kf: { scale: [kf(0, 1.05), kf(D, 1.1)] } };
+    case "coldReveal":
+      return { transform: { ...base(), scale: 1.1 }, kf: { scale: [kf(0, 1.1), kf(D, 1.04)] } };
+    case "hold":
+    default:
+      return { transform: { ...base(), scale: 1.02 } };
+  }
+}
 
 function probeDuration(url: string, kind: "video" | "audio"): Promise<number> {
   return new Promise((resolve) => {
@@ -155,6 +242,9 @@ export async function buildProjectFromBank(payload: PendingBankPayload): Promise
     const srcDur = asset.duration || (isVideo ? 10 : 10);
     const dur = isVideo ? Math.min(scene.d, Math.max(0.5, srcDur)) : scene.d;
     const tr = TRANS_MAP[scene.out ?? "cut"] ?? { type: "fade" as TransitionType, dur: 0.5 };
+    // C2: موشن صحنه حالا واقعاً به کی‌فریم تبدیل می‌شود
+    const mt = motionTransform(scene.motion ?? "hold", dur);
+    const fxVignette = scene.fx?.includes("vignette") ? 0.35 : 0;
     clips.push({
       id: uid("clip"),
       kind: isVideo ? "video" : "image",
@@ -163,8 +253,8 @@ export async function buildProjectFromBank(payload: PendingBankPayload): Promise
       in: 0,
       out: dur,
       speed: 1,
-      transform: { ...DEFAULT_TRANSFORM },
-      filter: { ...filterState },
+      transform: mt.transform,
+      filter: { ...filterState, vignette: Math.max(filterState.vignette, fxVignette) },
       chroma: { enabled: false, color: "#00b140", similarity: 0.4, smoothness: 0.1 },
       volume: isVideo ? 1 : 1,
       muted: isVideo ? false : true,
@@ -174,6 +264,7 @@ export async function buildProjectFromBank(payload: PendingBankPayload): Promise
       srcDur: isVideo ? srcDur : 10,
       srcW: asset.width || 1080,
       srcH: asset.height || 1920,
+      ...(mt.kf ? { kf: mt.kf } : {}),
     });
   }
 
