@@ -78,6 +78,11 @@ export function VideoView() {
   const thumbsOp = useRef<Set<string>>(new Set());
 
   const [time, setTime] = useState(0);
+  const timeRef = useRef(0);
+  useEffect(() => {
+    timeRef.current = time;
+  }, [time]);
+  const suppressClick = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [sheet, setSheet] = useState<string | null>(null);
@@ -552,6 +557,89 @@ export function VideoView() {
     toast.success(`نشانگر روی ${fmtTime(time)} ثبت شد 📍`);
   }, [mutate, time]);
 
+  // ── drag & reorder (NLE-grade) ──
+  // کلیپ اصلی: درگ افقی = جابه‌جایی ترتیب | لایه‌ها: درگ افقی = جابه‌جایی start
+  const [drag, setDrag] = useState<
+    | { kind: "clip"; id: string; startX: number; dx: number; moved: boolean }
+    | { kind: "overlay" | "text" | "audio"; id: string; startX: number; dx: number; origStart: number; moved: boolean }
+    | null
+  >(null);
+  const dragRef = useRef(drag);
+  dragRef.current = drag;
+
+  const onItemPointerDown = useCallback(
+    (
+      e: React.PointerEvent,
+      item: { kind: "clip" | "overlay" | "text" | "audio"; id: string; origStart?: number }
+    ) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      const base = { startX: e.clientX, dx: 0, moved: false };
+      setDrag(
+        item.kind === "clip"
+          ? { kind: "clip", id: item.id, ...base }
+          : { kind: item.kind, id: item.id, origStart: item.origStart ?? 0, ...base }
+      );
+    },
+    []
+  );
+
+  const onItemPointerMove = useCallback((e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    if (!d.moved && Math.abs(dx) < 6) return; // آستانهٔ تپ vs درگ
+    setDrag({ ...d, dx, moved: true });
+  }, []);
+
+  const onItemPointerUp = useCallback(() => {
+    const d = dragRef.current;
+    setDrag(null);
+    if (!d || !d.moved) return;
+    suppressClick.current = true;
+    setTimeout(() => {
+      suppressClick.current = false;
+    }, 300);
+    if (d.kind === "clip") {
+      mutate((p) => {
+        const from = p.clips.findIndex((c) => c.id === d.id);
+        if (from < 0) return;
+        const w = Math.max(30, clipDur(p.clips[from]) * PX);
+        let steps = Math.round(d.dx / w);
+        if (steps === 0 && Math.abs(d.dx) > 18) steps = d.dx > 0 ? 1 : -1; // درگ کوتاه = یک جایگاه
+        const to = Math.max(0, Math.min(p.clips.length - 1, from + steps));
+        if (to === from) return;
+        const [c] = p.clips.splice(from, 1);
+        p.clips.splice(to, 0, c);
+      });
+      return;
+    }
+    // لایه‌ها: جابه‌جایی زمانی با اسنپ ملایم به پلی‌هد و صفر
+    let dt = d.dx / PX;
+    const orig = (d as { origStart: number }).origStart;
+    let next = Math.max(0, orig + dt);
+    if (Math.abs(next - timeRef.current) < 0.18) next = timeRef.current;
+    else if (next < 0.12) next = 0;
+    next = Math.round(next * 20) / 20; // گام ۰.۰۵s
+    mutate((p) => {
+      if (d.kind === "overlay") {
+        const o = p.overlays.find((x) => x.id === d.id);
+        if (o) o.start = next;
+      } else if (d.kind === "text") {
+        const t = p.texts.find((x) => x.id === d.id);
+        if (t) {
+          const len = t.end - t.start;
+          t.start = next;
+          t.end = next + len;
+        }
+      } else if (d.kind === "audio") {
+        const a = p.audios.find((x) => x.id === d.id);
+        if (a) a.start = next;
+      }
+    });
+  }, [mutate, timeRef]);
+
   // ── project persistence (IndexedDB) ──
   const saveToDb = useCallback(
     async (name: string) => {
@@ -926,16 +1014,25 @@ export function VideoView() {
               const st = clipStart(project, c.id);
               const sel = selection?.type === "clip" && selection.id === c.id;
               const thumb = thumbs[c.id];
+              const isDragging = drag?.kind === "clip" && drag.id === c.id && drag.moved;
               return (
                 <button
                   key={c.id}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  style={{
+                    left: st * PX,
+                    width: Math.max(30, clipDur(c) * PX - 2),
+                    touchAction: "none",
+                    ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
+                  }}
+                  onPointerDown={(e) => onItemPointerDown(e, { kind: "clip", id: c.id })}
+                  onPointerMove={onItemPointerMove}
+                  onPointerUp={onItemPointerUp}
                   onClick={() => {
+                    if (suppressClick.current) return;
                     setSelection({ type: "clip", id: c.id });
                     seek(st + 0.05);
                   }}
-                  className={`absolute top-0 h-full rounded-lg overflow-hidden border text-left ${sel ? "border-primary ring-2 ring-primary/50" : "border-white/15"}`}
-                  style={{ left: st * PX, width: Math.max(30, clipDur(c) * PX - 2) }}
+                  className={`absolute top-0 h-full rounded-lg overflow-hidden border text-left ${isDragging ? "border-primary shadow-xl shadow-black/50" : ""} ${sel ? "border-primary ring-2 ring-primary/50" : "border-white/15"}`}
                 >
                   {thumb ? (
                     <div
@@ -963,16 +1060,25 @@ export function VideoView() {
             {project.overlays.map((o) => {
               const sel = selection?.type === "overlay" && selection.id === o.id;
               const url = assetsRef.current.get(o.assetId)?.url;
+              const isDragging = drag?.kind === "overlay" && drag.id === o.id && drag.moved;
               return (
                 <button
                   key={o.id}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  style={{
+                    left: o.start * PX,
+                    width: Math.max(26, o.dur * PX - 2),
+                    touchAction: "none",
+                    ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
+                  }}
+                  onPointerDown={(e) => onItemPointerDown(e, { kind: "overlay", id: o.id, origStart: o.start })}
+                  onPointerMove={onItemPointerMove}
+                  onPointerUp={onItemPointerUp}
                   onClick={() => {
+                    if (suppressClick.current) return;
                     setSelection({ type: "overlay", id: o.id });
                     seek(o.start + 0.05);
                   }}
-                  className={`absolute top-0 h-full rounded-lg overflow-hidden border ${sel ? "border-accent ring-2 ring-accent/50" : "border-white/15"}`}
-                  style={{ left: o.start * PX, width: Math.max(26, o.dur * PX - 2) }}
+                  className={`absolute top-0 h-full rounded-lg overflow-hidden border ${isDragging ? "border-accent shadow-xl shadow-black/50" : ""} ${sel ? "border-accent ring-2 ring-accent/50" : "border-white/15"}`}
                 >
                   {url && o.kind === "image" && (
                     <div className="absolute inset-0 bg-cover bg-center opacity-70" style={{ backgroundImage: `url(${url})` }} />
@@ -989,20 +1095,26 @@ export function VideoView() {
           <div className="relative h-7 mb-1">
             {project.texts.map((t) => {
               const sel = selection?.type === "text" && selection.id === t.id;
+              const isDragging = drag?.kind === "text" && drag.id === t.id && drag.moved;
               return (
                 <button
                   key={t.id}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => {
-                    setSelection({ type: "text", id: t.id });
-                    seek(t.start + 0.05);
-                  }}
-                  className={`absolute top-0 h-full rounded-md border px-1.5 text-[9px] truncate text-left ${sel ? "border-primary ring-2 ring-primary/50" : "border-white/15"}`}
                   style={{
                     left: t.start * PX,
                     width: Math.max(24, (t.end - t.start) * PX - 2),
                     background: t.isCaption ? "rgba(139,92,246,0.28)" : "rgba(59,130,246,0.25)",
+                    touchAction: "none",
+                    ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
                   }}
+                  onPointerDown={(e) => onItemPointerDown(e, { kind: "text", id: t.id, origStart: t.start })}
+                  onPointerMove={onItemPointerMove}
+                  onPointerUp={onItemPointerUp}
+                  onClick={() => {
+                    if (suppressClick.current) return;
+                    setSelection({ type: "text", id: t.id });
+                    seek(t.start + 0.05);
+                  }}
+                  className={`absolute top-0 h-full rounded-md border px-1.5 text-[9px] truncate text-left ${isDragging ? "border-primary shadow-lg shadow-black/50" : ""} ${sel ? "border-primary ring-2 ring-primary/50" : "border-white/15"}`}
                 >
                   {t.isCaption ? "💬 " : "T "}
                   {t.text}
@@ -1015,20 +1127,26 @@ export function VideoView() {
           <div className="relative h-9">
             {project.audios.map((a) => {
               const sel = selection?.type === "audio" && selection.id === a.id;
+              const isDragging = drag?.kind === "audio" && drag.id === a.id && drag.moved;
               return (
                 <button
                   key={a.id}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => {
-                    setSelection({ type: "audio", id: a.id });
-                    seek(a.start + 0.05);
-                  }}
-                  className={`absolute top-0 h-full rounded-lg border overflow-hidden ${sel ? "border-emerald-400 ring-2 ring-emerald-400/50" : "border-white/15"}`}
                   style={{
                     left: a.start * PX,
                     width: Math.max(26, (a.out - a.in) * PX - 2),
                     background: "linear-gradient(90deg, rgba(16,185,129,0.35), rgba(16,185,129,0.15))",
+                    touchAction: "none",
+                    ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
                   }}
+                  onPointerDown={(e) => onItemPointerDown(e, { kind: "audio", id: a.id, origStart: a.start })}
+                  onPointerMove={onItemPointerMove}
+                  onPointerUp={onItemPointerUp}
+                  onClick={() => {
+                    if (suppressClick.current) return;
+                    setSelection({ type: "audio", id: a.id });
+                    seek(a.start + 0.05);
+                  }}
+                  className={`absolute top-0 h-full rounded-lg border overflow-hidden ${isDragging ? "border-emerald-400 shadow-xl shadow-black/50" : ""} ${sel ? "border-emerald-400 ring-2 ring-emerald-400/50" : "border-white/15"}`}
                 >
                   <div className="absolute inset-0 flex items-center px-1.5 text-[9px] text-white truncate">
                     🎵 {a.name}
