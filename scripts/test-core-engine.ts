@@ -1,6 +1,10 @@
-// تست هسته: Keyframe Engine + normalizeProject + totalDur — اجرا: npx tsx scripts/test-core-engine.ts
+// تست هسته: Keyframe Engine + normalizeProject + totalDur + edit-ops — اجرا: npx tsx scripts/test-core-engine.ts
 import { evalKf, upsertKey, removeKeyAt, sortKeys, type Keyframe } from "../src/lib/video/keyframes";
 import { normalizeProject, totalDur, clipDur, clipStart, emptyProject } from "../src/lib/video/types";
+import {
+  snapTime, snapPoints, trimClipLeft, trimClipRight,
+  trimAudioLeft, trimAudioRight, trimOverlayLeft, trimOverlayRight, trimTextLeft, trimTextRight,
+} from "../src/lib/video/edit-ops";
 
 let pass = 0;
 let fail = 0;
@@ -77,6 +81,59 @@ p.overlays.push({
 eq("clipDur", clipDur(p.clips[0]), 5);
 eq("clipStart second clip", clipStart(p, "c1"), 0);
 eq("totalDur includes overlay end (10 > 5)", Math.round(totalDur(p)), 10);
+
+// ── edit-ops: snap ──
+eq("snapTime exact hit", snapTime(2.01, [0, 2, 4], 0.15), 2);
+eq("snapTime out of range → unchanged", snapTime(2.5, [0, 2, 4], 0.15), 2.5);
+eq("snapTime picks nearest", snapTime(1.9, [0, 2, 4], 0.15), 2);
+eq("snapTime zero point", snapTime(0.05, [0, 5], 0.15), 0);
+const sp = snapPoints(
+  {
+    clips: [{ id: "c1", start: 0, end: 3 }],
+    texts: [{ id: "t1", start: 3, end: 5 }],
+    audios: [{ id: "a1", start: 0, end: 6 }],
+    overlays: [{ id: "o1", start: 1, end: 4 }],
+    markers: [{ t: 7 }],
+  },
+  2.5
+);
+eq("snapPoints includes playhead", sp.includes(2.5), true);
+eq("snapPoints includes clip bounds", sp.includes(3), true);
+eq("snapPoints includes marker", sp.includes(7), true);
+const spEx = snapPoints(
+  {
+    clips: [],
+    texts: [{ id: "t1", start: 3, end: 5 }],
+    audios: [],
+    overlays: [],
+    markers: [],
+  },
+  2.5,
+  "t1"
+);
+eq("snapPoints excludes self", spEx.filter((x) => x === 3 || x === 5).length, 0);
+
+// ── edit-ops: trim ──
+eq("trimClipLeft shifts in by speed", trimClipLeft({ in: 1, out: 5, speed: 2 }, 0.5).in, 2);
+eq("trimClipLeft min 0.2 remains (drag right)", trimClipLeft({ in: 0, out: 0.5, speed: 1 }, 3).in, 0.3);
+eq("trimClipLeft no negative in (drag left)", trimClipLeft({ in: 1, out: 5, speed: 1 }, -5).in, 0);
+eq("trimClipRight grows out", trimClipRight({ in: 1, out: 3, speed: 2, srcDur: 10, isImage: false }, 1).out, 5);
+eq("trimClipRight video clamped to srcDur", trimClipRight({ in: 1, out: 9, speed: 1, srcDur: 10, isImage: false }, 5).out, 10);
+eq("trimClipRight image unbounded", trimClipRight({ in: 0, out: 4, speed: 1, srcDur: 4, isImage: true }, 10).out, 14);
+eq("trimAudioLeft moves start+in together", trimAudioLeft({ start: 2, in: 1, out: 8 }, 0.5), { start: 2.5, in: 1.5, out: 8 });
+eq("trimAudioLeft clamps at in=0", trimAudioLeft({ start: 1, in: 0.2, out: 8 }, -1).in, 0);
+eq("trimAudioRight clamped to srcDur", trimAudioRight({ in: 0, out: 9, srcDur: 10 }, 5).out, 10);
+eq("trimAudioRight min length", trimAudioRight({ in: 0, out: 0.3, srcDur: 10 }, -5).out, 0.2);
+eq("trimOverlayLeft moves start+srcIn", trimOverlayLeft({ start: 2, dur: 4, srcIn: 1, srcDur: 10, isVideo: true }, 0.5), { start: 2.5, dur: 3.5, srcIn: 1.5 });
+eq("trimOverlayLeft keeps min dur (drag right)", trimOverlayLeft({ start: 0, dur: 0.3, srcIn: 0, srcDur: 10, isVideo: true }, 1).dur, 0.2);
+eq("trimOverlayLeft clamps at zero (drag left)", trimOverlayLeft({ start: 0, dur: 0.3, srcIn: 0, srcDur: 10, isVideo: true }, -1).dur, 0.3);
+eq("trimOverlayLeft image ignores srcIn", trimOverlayLeft({ start: 1, dur: 2, srcIn: 0, srcDur: 0, isVideo: false }, 0.4).srcIn, 0);
+eq("trimOverlayRight video clamp", trimOverlayRight({ dur: 3, srcIn: 2, srcDur: 5, isVideo: true }, 10).dur, 3);
+eq("trimOverlayRight grows", trimOverlayRight({ dur: 3, srcIn: 2, srcDur: 10, isVideo: true }, 1).dur, 4);
+eq("trimTextLeft clamps before end", trimTextLeft({ start: 1, end: 2 }, 5).start, 1.7);
+eq("trimTextLeft no negative", trimTextLeft({ start: 1, end: 5 }, -4).start, 0);
+eq("trimTextRight grows", trimTextRight({ start: 1, end: 5 }, 2).end, 7);
+eq("trimTextRight min 0.3", trimTextRight({ start: 1, end: 1.2 }, -3).end, 1.3);
 
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

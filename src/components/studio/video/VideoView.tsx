@@ -39,6 +39,18 @@ import {
   putAutosaveBlob,
   type AutosaveRecord,
 } from "@/lib/projects-db";
+import {
+  snapPoints,
+  snapTime,
+  trimAudioLeft,
+  trimAudioRight,
+  trimClipLeft,
+  trimClipRight,
+  trimOverlayLeft,
+  trimOverlayRight,
+  trimTextLeft,
+  trimTextRight,
+} from "@/lib/video/edit-ops";
 
 const PX = 46; // timeline pixels per second
 
@@ -730,9 +742,14 @@ export function VideoView() {
 
   // ── drag & reorder (NLE-grade) ──
   // کلیپ اصلی: درگ افقی = جابه‌جایی ترتیب | لایه‌ها: درگ افقی = جابه‌جایی start
+  interface TrimOrig {
+    in: number; out: number; start: number; end: number; dur: number;
+    srcIn: number; speed: number; srcDur: number; isVideo: boolean; isImage: boolean;
+  }
   const [drag, setDrag] = useState<
     | { kind: "clip"; id: string; startX: number; dx: number; moved: boolean }
     | { kind: "overlay" | "text" | "audio"; id: string; startX: number; dx: number; origStart: number; moved: boolean }
+    | { kind: "trim"; edge: "l" | "r"; target: "clip" | "overlay" | "text" | "audio"; id: string; startX: number; dx: number; moved: boolean; orig: TrimOrig }
     | null
   >(null);
   const dragRef = useRef(drag);
@@ -772,6 +789,63 @@ export function VideoView() {
     setTimeout(() => {
       suppressClick.current = false;
     }, 300);
+    if (d.kind === "trim") {
+      const dt = d.dx / PX;
+      const o = d.orig;
+      // لایه‌ها به مرزهای همسایه اسنپ می‌شوند؛ تراک اصلی مغناطیسی است و اسنپ نمی‌خواهد
+      const pts = d.target === "clip" ? [] : snapPoints(snapCtx(), timeRef.current, d.id);
+      mutate((p) => {
+        if (d.target === "clip") {
+          const c = p.clips.find((x) => x.id === d.id);
+          if (!c || c.reverse) return;
+          if (d.edge === "l") {
+            const r = trimClipLeft({ in: o.in, out: o.out, speed: o.speed }, dt);
+            c.in = r.in;
+          } else {
+            const r = trimClipRight({ in: o.in, out: o.out, speed: o.speed, srcDur: o.srcDur, isImage: o.isImage }, dt);
+            c.out = r.out;
+          }
+        } else if (d.target === "overlay") {
+          const ov = p.overlays.find((x) => x.id === d.id);
+          if (!ov) return;
+          if (d.edge === "l") {
+            const s = snapTime(o.start + dt, pts);
+            const r = trimOverlayLeft({ start: o.start, dur: o.dur, srcIn: o.srcIn, srcDur: o.srcDur, isVideo: o.isVideo }, s - o.start);
+            ov.start = r.start;
+            ov.dur = r.dur;
+            if (ov.kind === "video") ov.srcIn = Math.max(0, r.srcIn);
+          } else {
+            const end0 = o.start + o.dur;
+            const e = snapTime(end0 + dt, pts);
+            ov.dur = trimOverlayRight({ dur: o.dur, srcIn: ov.kind === "video" ? o.srcIn : 0, srcDur: o.srcDur, isVideo: o.isVideo }, e - end0).dur;
+          }
+        } else if (d.target === "text") {
+          const t = p.texts.find((x) => x.id === d.id);
+          if (!t) return;
+          if (d.edge === "l") {
+            const s = snapTime(o.start + dt, pts);
+            t.start = trimTextLeft({ start: o.start, end: o.end }, s - o.start).start;
+          } else {
+            const e = snapTime(o.end + dt, pts);
+            t.end = trimTextRight({ start: o.start, end: o.end }, e - o.end).end;
+          }
+        } else if (d.target === "audio") {
+          const a = p.audios.find((x) => x.id === d.id);
+          if (!a) return;
+          if (d.edge === "l") {
+            const s = snapTime(o.start + dt, pts);
+            const r = trimAudioLeft({ start: o.start, in: o.in, out: o.out }, s - o.start);
+            a.start = r.start;
+            a.in = r.in;
+          } else {
+            const end0 = o.start + (o.out - o.in);
+            const e = snapTime(end0 + dt, pts);
+            a.out = trimAudioRight({ in: o.in, out: o.out, srcDur: o.srcDur }, e - end0).out;
+          }
+        }
+      });
+      return;
+    }
     if (d.kind === "clip") {
       mutate((p) => {
         const from = p.clips.findIndex((c) => c.id === d.id);
@@ -786,12 +860,12 @@ export function VideoView() {
       });
       return;
     }
-    // لایه‌ها: جابه‌جایی زمانی با اسنپ ملایم به پلی‌هد و صفر
+    // لایه‌ها: جابه‌جایی زمانی با اسنپ مغناطیسی (پلی‌هد، صفر، مرز کلیپ‌ها و لایه‌ها)
     let dt = d.dx / PX;
     const orig = (d as { origStart: number }).origStart;
     let next = Math.max(0, orig + dt);
-    if (Math.abs(next - timeRef.current) < 0.18) next = timeRef.current;
-    else if (next < 0.12) next = 0;
+    next = snapTime(next, snapPoints(snapCtx(), timeRef.current, d.id));
+    if (next < 0.12) next = 0;
     next = Math.round(next * 20) / 20; // گام ۰.۰۵s
     mutate((p) => {
       if (d.kind === "overlay") {
@@ -809,7 +883,73 @@ export function VideoView() {
         if (a) a.start = next;
       }
     });
-  }, [mutate, timeRef]);
+  }, [mutate, project, timeRef]);
+
+  // ── trim handles (دستگیره‌های تریم) ──
+  const onTrimPointerDown = useCallback(
+    (
+      e: React.PointerEvent,
+      edge: "l" | "r",
+      target: "clip" | "overlay" | "text" | "audio",
+      id: string,
+      orig: TrimOrig
+    ) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      setDrag({ kind: "trim", edge, target, id, startX: e.clientX, dx: 0, moved: false, orig });
+    },
+    []
+  );
+
+  const onTrimPointerMove = useCallback((e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || d.kind !== "trim") return;
+    const dx = e.clientX - d.startX;
+    if (!d.moved && Math.abs(dx) < 6) return; // آستانهٔ تپ vs درگ
+    setDrag({ ...d, dx, moved: true });
+  }, []);
+
+  const onTrimPointerUp = useCallback(() => onItemPointerUp(), [onItemPointerUp]);
+
+  // زمینهٔ اسنپ: مرزها باید از ترتیب کلیپ‌ها محاسبه شوند (clips خودشان start ندارند)
+  const snapCtx = useCallback(() => {
+    const p = project;
+    let acc = 0;
+    const clips = p.clips.map((c) => {
+      const s = acc;
+      acc += clipDur(c);
+      return { id: c.id, start: s, end: acc };
+    });
+    return {
+      clips,
+      overlays: p.overlays.map((o) => ({ id: o.id, start: o.start, end: o.start + o.dur })),
+      texts: p.texts.map((t) => ({ id: t.id, start: t.start, end: t.end })),
+      audios: p.audios.map((a) => ({ id: a.id, start: a.start, end: a.start + (a.out - a.in) })),
+      markers: p.markers,
+    };
+  }, [project]);
+
+  const trimHandle = (
+    edge: "l" | "r",
+    target: "clip" | "overlay" | "text" | "audio",
+    id: string,
+    orig: TrimOrig
+  ) => (
+    <span
+      onPointerDown={(e) => onTrimPointerDown(e, edge, target, id, orig)}
+      onPointerMove={onTrimPointerMove}
+      onPointerUp={onTrimPointerUp}
+      className={`absolute top-0 z-10 flex h-full w-4 cursor-col-resize items-center justify-center ${edge === "l" ? "left-0" : "right-0"}`}
+      style={{ touchAction: "none" }}
+    >
+      <span
+        className={`h-2/3 w-1.5 rounded-full bg-white/85 shadow-md ${
+          drag?.kind === "trim" && drag.id === id && drag.edge === edge && drag.moved ? "h-3/4 bg-accent" : ""
+        }`}
+      />
+    </span>
+  );
 
   // ── project persistence (IndexedDB) ──
   const saveToDb = useCallback(
@@ -1188,6 +1328,10 @@ export function VideoView() {
               const sel = selection?.type === "clip" && selection.id === c.id;
               const thumb = thumbs[c.id];
               const isDragging = drag?.kind === "clip" && drag.id === c.id && drag.moved;
+              const tOrig: TrimOrig = {
+                in: c.in, out: c.out, start: st, end: st + clipDur(c), dur: clipDur(c),
+                srcIn: c.in, speed: c.speed, srcDur: c.srcDur, isVideo: c.kind === "video", isImage: c.kind === "image",
+              };
               return (
                 <button
                   key={c.id}
@@ -1216,6 +1360,8 @@ export function VideoView() {
                     <div className="absolute inset-0 bg-secondary" />
                   )}
                   <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1 text-[9px] text-white truncate">{c.name}</div>
+                  {sel && !c.reverse && trimHandle("l", "clip", c.id, tOrig)}
+                  {sel && !c.reverse && trimHandle("r", "clip", c.id, tOrig)}
                   {c.speed !== 1 && <span className="absolute top-0.5 right-1 text-[9px] bg-black/60 text-accent rounded px-1">{c.speed}x</span>}
                   {c.reverse && <span className="absolute top-0.5 left-1 text-[9px] bg-black/60 text-white rounded px-1">🔁</span>}
                 </button>
@@ -1259,6 +1405,8 @@ export function VideoView() {
                   <div className="absolute inset-0 bg-[#c16a52]/30 flex items-center px-1.5 text-[9px] text-white truncate">
                     🖼 {o.name}
                   </div>
+                  {sel && trimHandle("l", "overlay", o.id, { in: 0, out: 0, start: o.start, end: o.start + o.dur, dur: o.dur, srcIn: o.srcIn, speed: 1, srcDur: o.srcDur, isVideo: o.kind === "video", isImage: o.kind === "image" })}
+                  {sel && trimHandle("r", "overlay", o.id, { in: 0, out: 0, start: o.start, end: o.start + o.dur, dur: o.dur, srcIn: o.srcIn, speed: 1, srcDur: o.srcDur, isVideo: o.kind === "video", isImage: o.kind === "image" })}
                 </button>
               );
             })}
@@ -1291,6 +1439,8 @@ export function VideoView() {
                 >
                   {t.isCaption ? "💬 " : "T "}
                   {t.text}
+                  {sel && trimHandle("l", "text", t.id, { in: 0, out: 0, start: t.start, end: t.end, dur: t.end - t.start, srcIn: 0, speed: 1, srcDur: 0, isVideo: false, isImage: false })}
+                  {sel && trimHandle("r", "text", t.id, { in: 0, out: 0, start: t.start, end: t.end, dur: t.end - t.start, srcIn: 0, speed: 1, srcDur: 0, isVideo: false, isImage: false })}
                 </button>
               );
             })}
@@ -1324,6 +1474,8 @@ export function VideoView() {
                   <div className="absolute inset-0 flex items-center px-1.5 text-[9px] text-white truncate">
                     🎵 {a.name}
                   </div>
+                  {sel && trimHandle("l", "audio", a.id, { in: a.in, out: a.out, start: a.start, end: a.start + (a.out - a.in), dur: a.out - a.in, srcIn: 0, speed: 1, srcDur: a.srcDur, isVideo: false, isImage: false })}
+                  {sel && trimHandle("r", "audio", a.id, { in: a.in, out: a.out, start: a.start, end: a.start + (a.out - a.in), dur: a.out - a.in, srcIn: 0, speed: 1, srcDur: a.srcDur, isVideo: false, isImage: false })}
                 </button>
               );
             })}
