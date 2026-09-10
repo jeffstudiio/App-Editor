@@ -9,6 +9,7 @@ import { AIError } from "@/lib/ai/core/ai-errors";
 import type { AIResult, ChatMessage } from "@/lib/ai/core/provider-types";
 import { aiServer, credsOf } from "@/lib/ai/server/registry";
 import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
+import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
 import { PERSONAS, type PersonaId } from "@/lib/studio-data";
 
 export const maxDuration = 120;
@@ -28,7 +29,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = (await req.json()) as Record<string, unknown>;
+    // ممیزی M-2: سقف بدنه — تاریخچهٔ چت را محدود می‌کند ولی قرارداد را نمی‌شکند
+    const parsed = await readJsonWithLimit(req, 128 * 1024);
+    if (!parsed.ok) return parsed.resp;
+    const body = parsed.body as Record<string, unknown>;
     const personaId = body?.personaId as PersonaId;
     const messages = Array.isArray(body?.messages) ? (body.messages as IncomingMessage[]) : null;
 

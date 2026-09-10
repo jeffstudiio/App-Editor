@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
+import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
 
 export const maxDuration = 60;
 
@@ -11,8 +13,16 @@ const OR_BASE = "https://openrouter.ai/api/v1";
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const apiKey = String(body?.apiKey ?? "").trim();
+    const rl = rateLimit(`or-models:${clientIp(req)}`, RATE_PRESETS.light);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { ok: false, error: "درخواست‌ها زیاد بوده — کمی صبر کن." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+      );
+    }
+    const parsed = await readJsonWithLimit(req, 8 * 1024);
+    if (!parsed.ok) return parsed.resp;
+    const apiKey = String(parsed.body?.apiKey ?? "").trim();
 
     // 1) Optional key validation via /key endpoint (never logged)
     if (apiKey) {

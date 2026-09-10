@@ -56,20 +56,23 @@ export class CapabilityRouter {
     const model = "model" in req ? (req.model as string | undefined) : undefined;
 
     // ── کش (فقط قابلیت‌های امن) ──
+    // ممیزی M-4: کلید هرگز وارد کلید کش نمی‌شود؛ ممیزی R3: provider واقعی
+    // سازندهٔ خروجی کنار خروجی ذخیره می‌شود تا cache-hit صادقانه گزارش شود.
     let cacheK: string | null = null;
     if (CACHEABLE.has(cap) && !opts.bypassCache) {
-      cacheK = cacheKey([cap, opts.prefer ?? "auto", model ?? "", req]);
-      const hit = this.cache.get<AIOutput>(cacheK);
+      const { apiKey: _omit, ...reqNoKey } = req as Record<string, unknown>;
+      cacheK = cacheKey([cap, opts.prefer ?? "auto", model ?? "", reqNoKey]);
+      const hit = this.cache.get<{ output: AIOutput; providerId: ProviderId }>(cacheK);
       if (hit) {
-        const p = this.registry.get(opts.prefer ?? "zai");
+        const p = this.registry.get(hit.providerId);
         return {
-          output: hit,
+          output: hit.output,
           provider: p
             ? { id: p.id, name: p.name, pricingTier: p.pricingTier }
-            : { id: "local", name: "Local", pricingTier: "local" },
+            : { id: hit.providerId, name: hit.providerId, pricingTier: "local" },
           model,
           cached: true,
-          attempts: [{ provider: p?.id ?? "local", ok: true }],
+          attempts: [{ provider: hit.providerId, ok: true }],
         };
       }
     }
@@ -99,7 +102,7 @@ export class CapabilityRouter {
         const output = await provider.execute(req);
         this.usage.success(id, cap, startedAt);
         attempts.push({ provider: id, ok: true });
-        if (cacheK) this.cache.set(cacheK, output);
+        if (cacheK) this.cache.set(cacheK, { output, providerId: id as ProviderId });
         return {
           output,
           provider: { id, name: provider.name, pricingTier: provider.pricingTier },

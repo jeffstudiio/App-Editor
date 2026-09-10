@@ -91,7 +91,8 @@ export function DesignStudioView({ onNavigate }: { onNavigate: (v: ViewId) => vo
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem(AI_SETTINGS_KEY) || "{}");
-      setGeminiReady(!!(s?.gemini?.key || s?.provider === "gemini"));
+      // ممیزی: شکل ذخیره‌شده gemini.apiKey است (نه gemini.key) — باگ key-pair اصلاح شد
+      setGeminiReady(!!(s?.gemini?.apiKey || s?.provider === "gemini"));
     } catch {}
     try {
       const b = JSON.parse(localStorage.getItem(BRAND_KIT_KEY) || "null");
@@ -112,11 +113,21 @@ export function DesignStudioView({ onNavigate }: { onNavigate: (v: ViewId) => vo
     setBusy(true);
     try {
       const size = ASPECTS.find((a) => a.id === aspect)!.size;
+      // ممیزی: کلید شخصی کاربر در تنظیمات دستیار به route ارسال شود (قبلاً نادیده بود)
+      let byoKey: string | undefined;
+      try {
+        const s = JSON.parse(localStorage.getItem(AI_SETTINGS_KEY) || "{}");
+        if (s?.gemini?.apiKey) byoKey = String(s.gemini.apiKey);
+      } catch {}
       const genOne = async () => {
         const res = await fetch("/api/image-gen", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(engine === "gemini" ? { prompt: full, size, engine: "gemini" } : { prompt: full, size }),
+          body: JSON.stringify(
+            engine === "gemini"
+              ? { prompt: full, size, engine: "gemini", apiKey: byoKey }
+              : { prompt: full, size, apiKey: byoKey },
+          ),
         });
         const j = await res.json();
         if (!res.ok || !j.image_base64) throw new Error(j.error || "تولید تصویر ناموفق بود");

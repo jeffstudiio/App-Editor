@@ -299,11 +299,18 @@ export function AssistantView() {
       const list: OrModel[] = Array.isArray(data.models) ? data.models : [];
       setGemModels(list);
       const viaNote = data.via && data.via !== "direct" ? " (مسیر واسط)" : "";
-      toast.success(
-        key
-          ? `کلید معتبره — ${list.length} مدل Gemini پیدا شد${viaNote}`
-          : `کلید سرور فعاله — ${list.length} مدل Gemini پیدا شد${viaNote}`
-      );
+      // ممیزی: لیست ثابتِ جایگزین (geo-block) نباید «لایو» جشن گرفته شود — صادقانه اعلام کن
+      if (data.fallback) {
+        toast.warning(
+          `گوگل از این سرور در دسترس نبود — لیست پیش‌فرض ثابت نشان داده شد (${list.length} مدل). اتصال/کلید را تست کن.`,
+        );
+      } else {
+        toast.success(
+          key
+            ? `کلید معتبره — ${list.length} مدل Gemini پیدا شد${viaNote}`
+            : `کلید سرور فعاله — ${list.length} مدل Gemini پیدا شد${viaNote}`,
+        );
+      }
       // auto-pick a sensible default chat model if nothing chosen yet
       setAiSettings((s) => {
         if (s.gemini.model) return s;

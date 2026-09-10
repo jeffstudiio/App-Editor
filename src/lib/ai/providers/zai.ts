@@ -59,7 +59,8 @@ export class ZaiProvider implements AIProvider {
   }
 
   healthCheck(): ProviderHealth {
-    return { state: "available", detail: "میزبانی‌شدهٔ پلتفرم", checkedAt: Date.now() };
+    // ممیزی: «available» قطعی گمراه‌کننده بود — تا تست واقعی، unknown صادقانه است
+    return { state: "unknown", detail: "میزبانی‌شدهٔ پلتفرم (برای اطمینان تست کن)", checkedAt: 0 };
   }
 
   async verify(): Promise<ProviderHealth> {

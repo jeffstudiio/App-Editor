@@ -45,7 +45,9 @@
 3. Graph/Curve Editor
 4. Word-level caption timing (ASR فعلاً جمله‌ای است)
 5. Job/Queue سیستم برای عملیات طولانی AI
-6. Rate limiting روی APIها
+6. ~~Rate limiting روی APIها~~ → **انجام شد** (`server/rate-limit.ts` + پوشش کامل ۱۶ مسیر پس از ممیزی ۲۰۲۶-۰۹-۱۱ — ببین `CURRENT-IMPLEMENTATION-AUDIT.md`)
+
+> ⚠️ به‌روزرسانی ممیزی جامع ۲۰۲۶-۰۹-۱۱: این سند جای خود را به `CURRENT-IMPLEMENTATION-AUDIT.md` (واقعیت کد)، `REALITY-MATRIX.md` و `GAP-ANALYSIS.md` داده است؛ چند مورد همین لیست (مانند drag-trim و detach audio و multi-select/کلیپ‌بورد) اکنون پیاده‌سازی شده‌اند.
 
 ## Missing — Important
 - Drag-trim دستگیره‌ای، detach audio، گروه‌بندی، multi-select، کلیپ‌بورد واقعی

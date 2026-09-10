@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
+import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
+import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
 
 export const maxDuration = 120;
 
@@ -37,9 +39,18 @@ function escapeXml(s: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rl = rateLimit(`edge-tts:${clientIp(req)}`, RATE_PRESETS.light);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "درخواست‌های گوینده زیاد بوده — کمی صبر کن." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+      );
+    }
+    const parsed = await readJsonWithLimit(req, 16 * 1024);
+    if (!parsed.ok) return parsed.resp;
+    const body = parsed.body;
     const text = String(body?.text ?? "").trim();
-    const voice = ALLOWED_VOICES.has(body?.voice) ? body.voice : "fa-IR-DilaraNeural";
+    const voice = ALLOWED_VOICES.has(String(body?.voice)) ? String(body?.voice) : "fa-IR-DilaraNeural";
     // rate: 0.5..2 (1 = normal) → percentage string for SSML
     const rateNum = Math.max(0.5, Math.min(2, Number(body?.rate) || 1));
     const ratePct = `${rateNum >= 1 ? "+" : "-"}${Math.abs(Math.round((rateNum - 1) * 100))}%`;

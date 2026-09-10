@@ -1,116 +1,78 @@
-# AI Providers — ماتریس واقعی ارائه‌دهنده‌ها (§33/§40)
+# AI Providers — ماتریس واقعی ارائه‌دهنده‌ها (بازبینی ممیزی ۲۰۲۶-۰۹-۱۱)
 
-> این سند پس از راستی‌آزمایی نوشته شده است. هیچ مقدار «حدسی» در جدول‌ها نیست.
-> هر provider فقط وقتی «فعال» است که واقعاً در کد وصل شده باشد.
-> تاریخ بررسی: ۲۰۲۶-۰۹ — endpointها بر اساس مستند رسمی هر سرویس.
+> این سند پس از راستی‌آزمایی خط‌به‌خط کد نوشته/به‌روز شده است. هیچ مقدار «حدسی» در جدول‌ها نیست.
+> جزئیات شواهد: `CURRENT-IMPLEMENTATION-AUDIT.md §۱-۲` · ماتریس: `REALITY-MATRIX.md §A`
 
 ## معماری (خلاصه)
 
 ```text
 کاربر → UI → /api/* → CapabilityRouter (src/lib/ai/core/capability-router.ts)
                          ↓ زنجیرهٔ هر قابلیت (free-first)
-                     Provider Registry → ارائه‌دهندهٔ انتخابی → خروجی ساخت‌یافته
+                     Provider Registry (۸ ارائه‌دهنده) → Provider انتخابی → خروجی ساخت‌یافته
                          ↓ خطا؟
                      ارائه‌دهندهٔ بعدی (fallback) — خطای پیکربندیِ انتخاب صریح کاربر بی‌صدا fallback نمی‌شود
 ```
 
-قابلیت‌ها: `text_generation` · `fast_text` · `translation` · `image_generation` · `image_editing` · `speech_to_text` · `text_to_speech` · `embeddings`
+## زنجیره‌های واقعی (`CAPABILITY_CHAIN`، `capability-router.ts:15-24`)
 
----
+```text
+text_generation:  zai → groq → gemini → openrouter → huggingface
+fast_text:        zai → groq → gemini → openrouter
+translation:      zai → gemini → groq → openrouter      ← مرده: هیچ مسیری از router عبور نمی‌کند
+image_generation: zai → gemini
+image_editing:    zai → gemini
+embeddings:       jina → local                           ← free-first نقض شده (اول کلیددار)
+text_to_speech:   edge-tts → zai                         ← مرده: مسیر واقعی /api/edge-tts کپی مستقیم است
+speech_to_text:   zai                                    ← مرده: /api/transcribe مستقیم
+```
 
-## ۱. Recommended — وصل‌شده و فعال
+## ماتریس providerها (بعد از ممیزی)
 
-| Capability | Provider | Free | API Key | Local | Fallback | Status | متغیر محیطی |
-|---|---|---|---|---|---|---|---|
-| Text / Fast Text / Translation | **ZAI (دستیار داخلی)** | ✓ (میزبانی پلتفرم) | — | — | groq → gemini → openrouter | **Active** | — (بدون کلید) |
-| Text / Translation / Image Gen & Edit | **Google Gemini** | ✓/tier | ✓ | — | groq → openrouter | **Active** (کلید لازم) | `GEMINI_API_KEY` |
-| Fast Text / Text | **Groq** | ✓/tier | ✓ | — | zai → gemini | **Active** (کلید لازم) | `GROQ_API_KEY` |
-| Text (مدل‌های `:free`) | **OpenRouter** | ✓/tier | ✓ | — | zai → groq | **Active** (BYO کلید+مدل) | `OPENROUTER_API_KEY` (اختیاری) |
-| Text / Translation / Embeddings | **Hugging Face Router** | ✓/tier | ✓ | ✓ (مدل متن‌باز) | jina → local | **Active** (کلید لازم) | `HUGGINGFACE_API_KEY` |
-| Embeddings | **Jina AI** (`jina-embeddings-v3`) | ✓/tier (۱۰M توکن رایگان) | ✓ | — | local | **Active** (کلید لازم) | `JINA_API_KEY` |
-| Text-to-Speech | **Edge Neural TTS** | ✓ (کاملاً رایگان، بی‌کلید) | — | — | zai | **Active** | — |
-| Embeddings | **Local hashing** (۲۵۶بعدی، فارسی‌آگاه) | ✓ | — | ✓ | — | **Active** (همیشه) | — |
+| Provider | تماس واقعی | قابلیت‌های پیاده‌شده | مصرف واقعی در اپ | حکم | یادداشت ممیزی |
+|---|---|---|---|---|---|
+| **ZAI (داخلی)** | ✓ سرور-ساید، بی‌کلید | text/fast/translate/ImgGen/ImgEdit/ASR/TTS | ۵ مسیر router + ۵ مسیر bypass | **REAL** | `healthCheck` همیشه available (`zai.ts:61-63`) — باید صادقانه شود |
+| **Gemini** | ✓ `generateContent` (+رله در geo-block) | text/fast/translate/ImgGen/ImgEdit | prefer از UI؛ image-gen/edit | **REAL** | کلید در URL → رله ثالث (HIGH)؛ مدل پیش‌فرض در کاتالوگ عمومی نیست؛ چت auto-404 ندارد |
+| **Groq** | ✓ OpenAI-compatible | text/fast/translate | فقط با `GROQ_API_KEY` env؛ UI prefer ندارد | **REAL / env-only** | عضو واقعی زنجیره |
+| **OpenRouter** | ✓ + هدر Referer | text/fast/translate (شرط req.model) | مسیر اصلی BYO | **REAL** | بدون model → skip بی‌ردی در attempts |
+| **Hugging Face** | ✓ chat+embeddings+whoami | ۳ قابلیت اعلان‌شده | عملاً هیچ (تلهٔ تک‌کلید + خارج از زنجیرهٔ embeddings) | **REAL / PRACTICALLY UNUSED** | نگهداری می‌شود؛ اشکال در سیم‌کشی کلید است |
+| **Jina** | ✓ `api.jina.ai/v1/embeddings` | embeddings | #۱ زنجیرهٔ embeddings | **REAL / سیم‌کشی کلید معیوب** | کلاینت کلید gemini/openrouter می‌فرستد (`search.ts:84`) |
+| **Edge-TTS** | ✓ msedge-tts → wss بینگ | TTS (گیت صدا fa-IR) | provider هرگز از router رد نمی‌شود؛ مسیر واقعی route کپی است | **REAL / UNUSED به‌عنوان provider** | R6: route از provider استفاده کند |
+| **Local** | بدون شبکه — hashing قطعی ۲۵۶بعدی | embeddings | fallback همیشه-فعال + مصرف کلاینتی | **REAL** | free-first واقعی embeddings همین است که اول نیست |
 
 ### ابزارهای محلی مرورگر (بدون شبکه، همیشه واقعی)
 
-| قابلیت | ماژول |
-|---|---|
-| تحلیل صحنه/لحظهٔ طلایی | `src/lib/video/ai-clipper.ts` |
-| تشخیص ضرب و BPM | `src/lib/video/sfx.ts` |
-| VAD تشخیص گفتار | `src/lib/video/asr-client.ts` |
-| سنتز ۸ افکت صوتی | `src/lib/video/sfx.ts` |
-| جست‌وجوی معنایی آفلاین | `src/lib/ai/core/local-embedding.ts` |
-
-### نکته‌های عملیاتی
-
-- **زنجیره‌ها در `CAPABILITY_CHAIN`** تعریف شده‌اند؛ تغییر ترجیح‌ها = تغییر یک ثابت.
-- **کلیدها فقط سمت سرور** مصرف می‌شوند؛ کلیدهای BYO از تنظیمات دستیار در هر درخواست ارسال می‌شوند و ذخیرهٔ سمت سرور ندارند.
-- **Gemini از سرور منطقه‌بسته است**؛ لایهٔ انتقال `gemini-client.ts` روی بلاک منطقه با relay می‌جنگد و نتیجه را صادقانه گزارش می‌کند (`region`).
-- **ASR** فقط موتور پلتفرم است (زنجیرهٔ تک‌عضوی)؛ صداهای پلتفرم با `fa-IR-*` سازگار نیستند و `supports()` رد می‌کند.
-
-## ۲. Optional — معماری پشتیبانی می‌کند، فعلاً غیرفعال
-
-| Provider | قابلیت بالقوه | چرا فعال نشد |
+| قابلیت | ماژول | حکم ممیزی |
 |---|---|---|
-| Roboflow | Object Detection / Segmentation | هیچ مسیر UI ای به تشخیص شیء وصل نیست؛ اتصالش بدون مصرف‌کننده واقعی = قابلیتِ نمایشی می‌شد (نقض §31) |
-| Clarifai | Vision / tagging | تکرارِ همان قابلیت با Gemini Vision؛ §38: over-integration ممنوع |
-| Shotstack | رندر ابری ویدئو | tier رایگانش آب‌نشان می‌گذارد + خروجی 720p؛ موتور محلی منبع حقیقت است (§13/§43) و رندر ابری Adapters آینده است |
-| JSON2Video | رندر ابری از template JSON | همان دلیل Shotstack — ارزان نبودن و عدم ضرورت فعلی |
-| Freesound | SFX واقعی | OAuth دوپایه + الزام attribution در UI؛ سنتز محلی فعلی بی‌مجوز و بی‌واسطه است. Adapter ساده است هر وقت فعال شد |
+| «تحلیل صحنه/لحظهٔ طلایی» | `src/lib/video/ai-clipper.ts` | واقعی اما **فقط تحلیل صوت** — برچسب UI اغراق است |
+| تشخیص ضرب و BPM | `src/lib/video/sfx.ts` | واقعی (انرژی-فلوکس) |
+| VAD تشخیص گفتار | `src/lib/video/asr-client.ts` | واقعی (segment-level، ≤۲۶ بخش/۵ دقیقه) |
+| سنتز ۸ افکت صوتی | `src/lib/video/sfx.ts` | واقعی (OfflineAudioContext) |
+| جست‌وجوی معنایی آفلاین | `src/lib/ai/core/local-embedding.ts` | واقعی و قطعی |
 
-## ۳. Rejected — بررسی و رد شد
+## نقشهٔ مسیرها — چه کسی از معماری عبور می‌کند؟
 
-| Provider | دلیل |
-|---|---|
-| **CORS relays عمومی به‌عنوان پایپلاین اصلی Gemini** | کلید کاربر از مبدأ ثالث عبور می‌کند؛ فقط در لایهٔ انتقال Gemini به‌عنوان چرخش اضطراری باقی مانده و `via` در پاسخ شفاف است |
-| هر API که «رایگانِ اعتباری» دارد ولی card می‌خواهد | §3/§4: تفاوت `UNLIMITED_FREE` و `FREE_TIER` محترم است؛ signup با کارت برای هستهٔ محصول ممنوع |
-| APIهای غیرفعال/متروک فهرست public-apis | §39: چند سرویس (از جمله برخی OCRهای معروف فهرست) endpoint مرده یا بدون SLA دارند — با پینگ راستی‌آزمایی شد و رد شدند |
+| مسیر | مسیر اجرای AI | router؟ |
+|---|---|:-:|
+| `/api/assistant` | router · text_generation | ✅ |
+| `/api/ai/plan` | router · fast_text (×۲ تلاش ترمیم) | ✅ |
+| `/api/ai/embeddings` | router · embeddings | ✅ |
+| `/api/image-gen` / `/api/image-edit` | router · image_* | ✅ |
+| `/api/ai/status` | registry + verify واقعی | ✅ |
+| `/api/translate` `/api/edit-plan` `/api/script-scenes` `/api/tts` `/api/transcribe` | `ZAI.create()` مستقیم | ❌ |
+| `/api/edge-tts` | msedge-tts مستقیم (کپی provider) | ❌ |
+| `/api/gemini/models` `/api/openrouter/models` | fetch مستقیم | ❌ |
+| `/api/explore` | CLI خارجی (execFile) | ❌ |
 
----
+## اصلاحات تعیین‌شده توسط ممیزی (به ترتیب)
 
-## تفاوت FREE و FREE_TIER در کد (§4)
-
-`PricingTier` در `src/lib/ai/core/provider-types.ts`:
-
-```ts
-type PricingTier = "free" | "free_tier" | "paid" | "local" | "unknown";
-```
-
-- `free` → zai (میزبانی پلتفرم) و edge-tts: بدون کلید، بدون سقف شناخته‌شدهٔ کاربر
-- `free_tier` → gemini / groq / openrouter / huggingface / jina: سقف نرخ/سهمیه دارند
-- `local` → امبدینگ هش‌شده: مطلقاً آفلاین
-
-پنل تنظیمات (`ProviderStatusPanel`) این طبقه‌بندی را عیناً نشان می‌دهد و دروغ نمی‌گوید:
-«وصل / تنظیم نشده / محدودیت نرخ / کلید نامعتبر» فقط از وضعیت واقعی اجرا می‌آید.
-
-## متغیرهای محیطی (§20)
-
-```text
-GEMINI_API_KEY=        # اختیاری — fallback سمت سرور برای Gemini
-GROQ_API_KEY=          # اختیاری — متن سریع
-HUGGINGFACE_API_KEY=   # اختیاری — متن/ترجمه/امبدینگ متن‌باز
-JINA_API_KEY=          # اختیاری — امبدینگ عصبی
-OPENROUTER_API_KEY=    # اختیاری — fallback سرور (کاربر معمولاً BYO می‌فرستد)
-```
-
-اپ بدون همهٔ این‌ها هم کار می‌کند (موتور پلتفرم + ابزارهای محلی).
-
-## جایگزینی Provider بدون بازنویسی (§44 — الزام سخت)
-
-هر ارائه‌دهنده فقط این قرارداد را پیاده می‌کند:
-
-```ts
-interface AIProvider {
-  id; name; capabilities; pricingTier; requiresApiKey; envKey?; docsUrl;
-  supports(cap, req?); isAvailable(key?); healthCheck(key?); verify(key?); execute(req);
-}
-```
-
-جایگزینی Gemini/Jina/Shotstack = نوشتن یک adapter جدید + یک خط در `CAPABILITY_CHAIN`.
-Agent / Timeline / Editor / بانک تمپلیت هیچ وابستگی مستقیمی به نام provider ندارند
-(بجز aliasهای قدیمی `engine: "gemini"` که به `prefer` ترجمه می‌شوند).
+1. **H-1 امنیتی:** کلید Gemini از query-string به هدر `x-goog-api-key` منتقل شود (حداقل برای کاندیداهای رله) — کلید کاربر نباید از پروکسی ثالث عبور کند.
+2. **R1:** کلید per-provider (gemini/openrouter/jina/…) — پایان تلهٔ تک‌کلید.
+3. **R3:** کلید کش بدون apiKey + انتساب صحیح provider در cache-hit.
+4. **R2:** سقف بدنه + rate limit برای ۸ مسیر بی‌پوشش.
+5. **embeddings free-first واقعی:** local اول، jina بعد (یا jina فقط وقتی کلید جینا هست).
+6. **R4:** منبع واحد مدل‌ها (`model-defaults.ts`) + auto-404 برای چت.
+7. **zai healthCheck صادقانه** (unknown به‌جای available).
 
 ## تست‌ها
 
-- `npx tsx scripts/test-ai-architecture.ts` — ۳۵ assert: registry، fallback، کش، usage، امبدینگ محلی، گیت صدا، خطاها
-- `npx tsx scripts/test-agent.ts` — ۵۶ assert: snapshot، validator، executor، **workflow واقعی Beauty**، پرامپت planner
+۳ سوییت دستی (tsx): `test-ai-architecture.ts` (۳۵) · `test-agent.ts` (۵۶) · `test-core-engine.ts` (۶۳) = **۱۵۴ assertion سبز** — بدون CI (گپ M5 در GAP-ANALYSIS).

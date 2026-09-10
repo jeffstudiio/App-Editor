@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
+import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
+import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
 
 export const maxDuration = 120;
 
@@ -15,9 +17,18 @@ const ALLOWED_VOICES = new Set([
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rl = rateLimit(`tts:${clientIp(req)}`, RATE_PRESETS.heavy);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "درخواست‌های گوینده زیاد بوده — کمی صبر کن." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+      );
+    }
+    const parsed = await readJsonWithLimit(req, 16 * 1024);
+    if (!parsed.ok) return parsed.resp;
+    const body = parsed.body;
     const text = String(body?.text ?? "").trim();
-    const voice = ALLOWED_VOICES.has(body?.voice) ? body.voice : "tongtong";
+    const voice = ALLOWED_VOICES.has(String(body?.voice)) ? String(body?.voice) : "tongtong";
     const speed = Math.max(0.5, Math.min(2, Number(body?.speed) || 1));
 
     if (!text) {

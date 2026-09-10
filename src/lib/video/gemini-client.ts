@@ -79,14 +79,26 @@ export async function geminiFetch(
   }
   const buildCandidates = (): Cand[] => {
     const list: Cand[] = [];
+    // ── امنیت (ممیزی H-1): کلید از query-string استخراج و برای کاندیداهای
+    // رله در هدر x-goog-api-key قرار می‌گیرد — کلید هرگز از پروکسی ثالث
+    // در URL عبور نمی‌کند. تماس مستقیم (HTTPS به گوگل) بدون تغییر می‌ماند.
+    const urlDirect = url;
+    let urlRelay = url;
+    const keyHeader: Record<string, string> = {};
+    const m = /[?&]key=([^&]+)/.exec(url);
+    if (m) {
+      const decoded = decodeURIComponent(m[1]);
+      keyHeader["x-goog-api-key"] = decoded;
+      urlRelay = url.replace(/([?&])key=[^&]+&?/, "$1").replace(/[?&]$/, "");
+    }
     if (!directDead) {
-      list.push({ via: "direct", url, headers: { "Content-Type": "application/json" } });
+      list.push({ via: "direct", url: urlDirect, headers: { "Content-Type": "application/json", ...keyHeader } });
     }
     for (const r of RELAYS) {
       list.push({
         via: r.id,
-        url: r.wrap(url),
-        headers: { "Content-Type": "application/json", ...r.extraHeaders },
+        url: r.wrap(urlRelay),
+        headers: { "Content-Type": "application/json", ...keyHeader, ...r.extraHeaders },
       });
     }
     // Try the last-good path first to avoid re-paying dead attempts

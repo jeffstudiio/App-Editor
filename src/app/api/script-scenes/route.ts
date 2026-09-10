@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
+import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
+import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
 
 export const maxDuration = 120;
 
@@ -19,8 +21,17 @@ const SYSTEM = `تو «ویدئوساز خودکار» هستی: سناریوی 
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const script = String(body?.script ?? "").trim();
+    const rl = rateLimit(`scenes:${clientIp(req)}`, RATE_PRESETS.heavy);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "درخواست‌ها زیاد بوده — کمی صبر کن." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+      );
+    }
+    const bodyParsed = await readJsonWithLimit(req, 128 * 1024);
+    if (!bodyParsed.ok) return bodyParsed.resp;
+    const body = bodyParsed.body;
+    const script = String(body?.script ?? "").trim().slice(0, 8000);
     const sceneCount = Math.max(3, Math.min(6, Number(body?.sceneCount) || 4));
     const tone = String(body?.tone ?? "صمیمی و پرانرژی");
     if (!script) {

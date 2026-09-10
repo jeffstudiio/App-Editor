@@ -23,8 +23,9 @@ const nextConfig: NextConfig = {
     : {
         output: "standalone" as const,
       }),
+  // ممیزی: گیت تایپ واقعی — src/ بدون خطاست؛ skills/ از tsconfig خارج شده است
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   reactStrictMode: false,
 };
