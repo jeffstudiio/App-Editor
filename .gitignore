@@ -40,7 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
+# فایل‌های محلیِ ریشهٔ مخزن — نه پوشه‌های src
+/local-*
+!src/lib/ai/core/local-embedding.ts
 .claude
 .z-ai-config
 *.log
