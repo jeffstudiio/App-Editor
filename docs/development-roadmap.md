@@ -14,11 +14,11 @@
 - feat: **Keyframe Engine v1** — ۵ پراپرتی (scale/x/y/rotate/opacity)، ۷ easing، UI شیت با ease-per-key + تست ۲۷ assert
 - docs: /docs کامل
 
-## MILESTONE 2 — Professional Editor (بعدی)
-1. **Trim دستگیره‌ای** روی تایم‌لاین (in/out handles با درگ)
-2. **Export نسل ۲**: pipeline ثابت فریم‌به‌فریم با WebCodecs (H.264) + fallback MediaRecorder؛ صدا مستقل از gesture؛ cancel UI
-3. **Detach audio** + **کلیپ‌بورد واقعی** (copy/paste بین پروژه‌ها)
-4. **Multi-select** + گروه‌بندی + snap/magnet کامل (به کلیپ‌های همسایه)
+## MILESTONE 2 — Professional Editor
+1. ✅ **Trim دستگیره‌ای** روی تایم‌لاین (in/out handles با درگ) + اسنپ مغناطیسی — commit 770d3db
+2. ✅ **Export نسل ۲**: WebCodecs H.264 + AAC با mp4-muxer، فریم‌به‌فریم دقیق؛ صدا مستقل از gesture (OfflineAudioContext)؛ fallback MediaRecorder؛ cancel UI — commit f8183df
+3. ✅ **Detach audio** (decode → offline render → WAV) + **کلیپ‌بورد واقعی** (IDB store؛ copy/paste بین پروژه‌ها و پس از reload؛ Ctrl+C/V) — commit 41a1a97
+4. Multi-select + گروه‌بندی (بعدی)
 5. Adjustment layer + LUT (.cube parser ساده) + curves
 6. Word-level caption: تشخیص کلمه از VAD boundryها + karaoke واقعی
 

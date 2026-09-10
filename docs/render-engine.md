@@ -18,3 +18,13 @@
 2. Audio render: OfflineAudioContext → AudioBuffer → encode.
 3. Cancel + progress دقیق (فریم i از N).
 4. بعداً: render در Worker + proxy media.
+
+---
+
+## ✅ پیاده‌سازی شد (Milestone 2) — Export نسل ۲
+`src/lib/video/export-advanced.ts` + `EditorEngine.renderStill()`:
+- **WebCodecs VideoEncoder** (H.264) + **AudioEncoder** (AAC) + مالتی‌پلکس **mp4-muxer** → MP4 واقعی
+- حلقهٔ ثابت 1/fps با seek دقیق ویدئوی فعال و overlayها (`renderStill`) + انتظار decode تصاویر
+- صدا **مستقل از gesture**: OfflineAudioContext با playbackRate واقعی (سرعت)، ramp فیدها، گراف اکو، ducking زمان‌بندی‌شدهٔ زیرنویس
+- مذاکرهٔ خودکار کدک بین ۹ پروفایل/سطح AVC با `isConfigSupported`
+- fallback شفاف به MediaRecorder + دکمهٔ لغو + نمایش وضعیت قابلیت در ExportSheet
