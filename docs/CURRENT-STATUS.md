@@ -1,13 +1,22 @@
-# CURRENT-STATUS — JEFF Creative Studio (Post-Transformation Sprint)
+# CURRENT-STATUS — JEFF Creative Studio (Post Editor-UX Rebuild)
 
-> تاریخ: ۱۴۰۴/۰۶/۲۰ — بعد از Sprint «Product Transformation» (P0+P1+P2 quick-wins)
-> منبع حقیقت: کد + ۲۲۳ تست سبز (`npm test`) + `tsc --noEmit` پاک + lint پاک
+> تاریخ: ۱۴۰۴/۰۶/۲۱ — بعد از بازسازی حیاتی «Editor UX & Timeline Rebuild» (۴۸ بند)
+> منبع حقیقت: کد + **۲۷۸ تست سبز** (`npm test` = core 104 · §44 regressions 53 · agent 86 · ai-arch 35) + `tsc --noEmit` پاک + lint پاک
+> معماری جدید ادیتور: `EDITOR-ARCHITECTURE.md`
 > اسناد مکمل: `REALITY-MATRIX.md` (جزئیات هر قابلیت) · `GAP-ANALYSIS.md` (کارهای باقی‌مانده) · `AI-PROVIDERS.md` · `ARCHITECTURE-STATUS.md` · `CURRENT-IMPLEMENTATION-AUDIT.md`
 
 ## ۱) خلاصهٔ یک‌نگاهی
 
 | حوزه | وضعیت | توضیح |
 |---|---|---|
+| **مدل ترنزیشن (Edit-Point)** | **REAL (بازسازی)** | ترنزیشن = ویژگیِ مرز بین دو کلیپ مجاور (`Project.transitions`) با ۱۲ خانوادهٔ رندر متمایز + جهت + easing + clamp همسایه؛ مایگریشن خودکار از `transitionIn` قدیمی |
+| **Workspace ادیتور** | **REAL (بازسازی)** | پیش‌نمایش/تایم‌لاین هرگز پوشیده نمی‌شوند: ToolDock داخلی (≤46dvh) در موبایل + Inspector راست در دسکتاپ؛ ابزار کاملاً بافتاری |
+| **برش (Split)** | **REAL (ارتقا)** | `splitClipAt` واحد برای UI/Agent؛ کی‌فریم با پیوستگی می‌شکند؛ کلیپ راست انتخاب و نقطهٔ تدوین pulse می‌گیرد |
+| **نقطهٔ تدوین روی تایم‌لاین** | **REAL (جدید)** | الماسِ مرز بین کلیپ‌ها + نوار ترنزیشن با مدت/برچسب؛ تپ = انتخاب یا مرورگر ترنزیشن |
+| **مرورگر ترنزیشن** | **REAL (جدید)** | پیش‌نمایش زندهٔ موتور واقعی روی کلیپ‌های خود کاربر + ۱۷ کارت/۴ دسته + جست‌وجو/علاقه‌مندی/اخیر + مدت clamp‌شده + جهت/easing |
+| **پریست‌ها** | **REAL (جدید)** | ۶ متن + ۱۳ رنگ (خانوادهٔ بیوتی) + ۱۲ انیمیشن — فقط روی آبجکت انتخاب‌شده |
+| **مرورگر افکت** | **REAL (جدید)** | فقط ماژول‌های واقعی (نور/رنگ/وینیت/کیفیت+/لرزش‌گیر/کراپ/ماسک/کروما) |
+| **زوم تایم‌لاین** | **REAL (جدید)** | دکمه + پینچ دورانگشتی با لنگر (18..160 px/s) |
 | موتور تدوین (Timeline/Trim/Split/Speed/KF/Filter/Mask/Chroma) | **REAL** | پیش‌نمایش و خروجی WebCodecs هر دو روی `drawFrame` مشترک‌اند |
 | **کراپ واقعی (P0 قبلی)** | **REAL (جدید)** | `CropState` نرمال‌شده در منبع؛ در preview + MediaRecorder + WebCodecs اعمال می‌شود؛ UI شیت + پریست نسبت‌دار + فرمان Agent |
 | **کارائوکه (MOCK قبلی)** | **REAL (جدید)** | هم‌ترازی کلمه‌به‌کلمهٔ انرژی‌محور (`word-align.ts`) روی صدای ASR؛ هایلایت از روی زمان واقعی گفتار؛ بدون envelope → fallback نسبتیِ برچسب‌خورده |
