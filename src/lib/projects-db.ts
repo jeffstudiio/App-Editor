@@ -3,9 +3,13 @@
 // cover thumbnail, so a project can be re-opened even after a full reload.
 
 const DB_NAME = "creative-studio-projects";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_META = "projects"; // {id, name, createdAt, updatedAt, aspect, thumb, clips, ...project}
 const STORE_BLOBS = "blobs"; // {key: `${projectId}:${assetId}`, blob, type}
+const STORE_AUTOSAVE = "autosave"; // {slot, projectId, name, project, savedAt, assetIds}
+
+/** نسخهٔ اسکیمای Project — برای مایگریشن آینده (normalizeProject در types.ts) */
+export const PROJECT_SCHEMA_VERSION = 2;
 
 export interface SavedProjectMeta {
   id: string;
@@ -25,6 +29,7 @@ function openDb(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE_META)) db.createObjectStore(STORE_META, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORE_BLOBS)) db.createObjectStore(STORE_BLOBS, { keyPath: "key" });
+      if (!db.objectStoreNames.contains(STORE_AUTOSAVE)) db.createObjectStore(STORE_AUTOSAVE, { keyPath: "slot" });
     };
     req.onsuccess = () => res(req.result);
     req.onerror = () => rej(req.error ?? new Error("IndexedDB open failed"));
@@ -183,4 +188,90 @@ export async function duplicateProject(id: string): Promise<string | null> {
     clipCount: loaded.meta.clipCount,
     duration: loaded.meta.duration,
   });
+}
+
+/** تغییر نام فقط متادیتا — بدون بازنویسی بولب‌ها */
+export async function renameProject(id: string, name: string): Promise<boolean> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_META, "readwrite");
+  const store = tx.objectStore(STORE_META);
+  const rec = (await reqAs(store.get(id) as IDBRequest<any>)) as any;
+  if (!rec) {
+    db.close();
+    return false;
+  }
+  rec.name = name;
+  rec.updatedAt = Date.now();
+  store.put(rec);
+  await txDone(tx);
+  db.close();
+  return true;
+}
+
+// ── Autosave (crash recovery) — یک اسلات «پیش‌نویس» برای آخرین جلسهٔ ویرایش ──
+
+export interface AutosaveRecord {
+  slot: string;
+  projectId: string | null;
+  name: string;
+  project: unknown;
+  savedAt: number;
+  assetIds: string[];
+}
+
+const AUTOSAVE_SLOT = "draft";
+const AUTO_BLOB_PREFIX = "auto:";
+
+export async function saveAutosave(rec: Omit<AutosaveRecord, "slot">): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_AUTOSAVE, "readwrite");
+  tx.objectStore(STORE_AUTOSAVE).put({ ...rec, slot: AUTOSAVE_SLOT });
+  await txDone(tx);
+  db.close();
+}
+
+export async function loadAutosave(): Promise<AutosaveRecord | null> {
+  const db = await openDb();
+  const rec = (await reqAs(
+    db.transaction(STORE_AUTOSAVE, "readonly").objectStore(STORE_AUTOSAVE).get(AUTOSAVE_SLOT) as IDBRequest<any>
+  )) as AutosaveRecord | undefined;
+  db.close();
+  return rec ?? null;
+}
+
+export async function clearAutosave(): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_AUTOSAVE, "readwrite");
+  tx.objectStore(STORE_AUTOSAVE).delete(AUTOSAVE_SLOT);
+  const blobTx = db.transaction(STORE_BLOBS, "readwrite");
+  const store = blobTx.objectStore(STORE_BLOBS);
+  const keys: IDBValidKey[] = await reqAs(store.getAllKeys());
+  for (const k of keys) if (String(k).startsWith(AUTO_BLOB_PREFIX)) store.delete(k);
+  await txDone(tx);
+  await txDone(blobTx);
+  db.close();
+}
+
+export async function putAutosaveBlob(assetId: string, blob: Blob, type: string): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_BLOBS, "readwrite");
+  tx.objectStore(STORE_BLOBS).put({ key: `${AUTO_BLOB_PREFIX}${assetId}`, blob, type });
+  await txDone(tx);
+  db.close();
+}
+
+export async function loadAutosaveAssets(): Promise<{ id: string; blob: Blob; type: string }[]> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_BLOBS, "readonly");
+  const store = tx.objectStore(STORE_BLOBS);
+  const keys: IDBValidKey[] = await reqAs(store.getAllKeys());
+  const out: { id: string; blob: Blob; type: string }[] = [];
+  for (const k of keys) {
+    const key = String(k);
+    if (!key.startsWith(AUTO_BLOB_PREFIX)) continue;
+    const rec = (await reqAs(store.get(k))) as { blob: Blob; type?: string };
+    out.push({ id: key.slice(AUTO_BLOB_PREFIX.length), blob: rec.blob, type: rec.type || "application/octet-stream" });
+  }
+  db.close();
+  return out;
 }

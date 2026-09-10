@@ -14,7 +14,7 @@ import {
 } from "@/lib/video/engine";
 import {
   ASPECTS, DEFAULT_CHROMA, DEFAULT_FILTER, DEFAULT_TRANSFORM,
-  clipDur, clipStart, emptyProject, totalDur, uid,
+  clipDur, clipStart, emptyProject, totalDur, uid, normalizeProject,
   type AspectId, type Clip, type MediaAsset, type Project, type TextItem,
 } from "@/lib/video/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -30,7 +30,14 @@ import { StickersSheet, SfxSheet, MaskSheet, AiClipperSheet, ExtendSheet, Projec
 import { EDIT_TEMPLATES, applyTemplateToProject } from "@/lib/video/templates";
 import { consumePendingProject, consumePendingTemplate, consumePendingBank } from "@/lib/video/transfer";
 import { buildProjectFromBank } from "@/lib/video/bank-apply";
-import { saveProject as saveProjectDb } from "@/lib/projects-db";
+import {
+  saveProject as saveProjectDb,
+  saveAutosave,
+  loadAutosave,
+  loadAutosaveAssets,
+  putAutosaveBlob,
+  type AutosaveRecord,
+} from "@/lib/projects-db";
 
 const PX = 46; // timeline pixels per second
 
@@ -154,9 +161,25 @@ export function VideoView() {
     if (pp) {
       for (const a of pp.assets) assetsRef.current.set(a.id, a);
       setAssetsTick((t) => t + 1);
-      setProject(pp.project);
+      setProject(normalizeProject(pp.project));
       setProjectName(pp.name);
       toast.success(`پروژه «${pp.name}» بارگذاری شد`);
+    }
+    // بازیابی پیش‌نویسِ ذخیره‌نشدهٔ جلسهٔ قبل (crash recovery) — فقط اگر هندآفی نبود
+    if (!pb && !tpl && !pp) {
+      loadAutosave()
+        .then((rec) => {
+          if (!rec?.project) return;
+          const r = rec.project as { clips?: unknown[]; overlays?: unknown[]; texts?: unknown[]; audios?: unknown[] };
+          const count = (r.clips?.length ?? 0) + (r.overlays?.length ?? 0) + (r.texts?.length ?? 0) + (r.audios?.length ?? 0);
+          if (count === 0) return;
+          toast("پیش‌نویس ذخیره‌نشده از جلسهٔ قبل پیدا شد 💾", {
+            description: new Date(rec.savedAt).toLocaleString("fa-IR"),
+            action: { label: "بازیابی", onClick: () => void restoreAutosave(rec) },
+            duration: 15000,
+          });
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -192,6 +215,86 @@ export function VideoView() {
     });
     setUndoTick((t) => t + 1);
   }, []);
+
+  // ── autosave (crash recovery) ──
+  const projRef = useRef(project);
+  projRef.current = project;
+  const autosaveAssetsRef = useRef<Set<string>>(new Set());
+  const autosaveBusyRef = useRef(false);
+
+  const restoreAutosave = useCallback(async (rec: AutosaveRecord) => {
+    try {
+      const assets = await loadAutosaveAssets();
+      for (const a of assets) {
+        const type = a.type.startsWith("video") ? "video" : a.type.startsWith("audio") ? "audio" : "image";
+        assetsRef.current.set(a.id, {
+          id: a.id,
+          type: type as MediaAsset["type"],
+          url: URL.createObjectURL(a.blob),
+          name: `asset-${a.id.slice(-4)}`,
+          duration: 0,
+          width: 1080,
+          height: 1920,
+        });
+        autosaveAssetsRef.current.add(a.id);
+      }
+      setAssetsTick((t) => t + 1);
+      setProject(normalizeProject(rec.project));
+      setProjectId(rec.projectId);
+      setProjectName(rec.name || "پیش‌نویس بازیابی‌شده");
+      toast.success("پیش‌نویس جلسهٔ قبل بازیابی شد ✅");
+    } catch {
+      toast.error("بازیابی پیش‌نویس ناموفق بود");
+    }
+  }, []);
+
+  const runAutosave = useCallback(async () => {
+    if (autosaveBusyRef.current) return;
+    autosaveBusyRef.current = true;
+    try {
+      const p = projRef.current;
+      const ids = new Set<string>();
+      for (const c of p.clips) ids.add(c.assetId);
+      for (const o of p.overlays) ids.add(o.assetId);
+      for (const a of p.audios) ids.add(a.assetId);
+      // فقط بولب‌های جدید ذخیره می‌شوند — بولب‌های قبلی در IDB مانده‌اند
+      for (const id of ids) {
+        if (autosaveAssetsRef.current.has(id)) continue;
+        const asset = assetsRef.current.get(id);
+        if (!asset) continue;
+        try {
+          const blob = await (await fetch(asset.url)).blob();
+          await putAutosaveBlob(id, blob, blob.type || "application/octet-stream");
+          autosaveAssetsRef.current.add(id);
+        } catch {
+          // asset فعلاً غیرقابل‌خواندن — JSON بدون آن هم ذخیره می‌شود
+        }
+      }
+      await saveAutosave({
+        projectId,
+        name: projectName || "پیش‌نویس",
+        project: p,
+        savedAt: Date.now(),
+        assetIds: [...ids],
+      });
+    } catch {
+      // autosave هرگز نباید UI را اذیت کند
+    } finally {
+      autosaveBusyRef.current = false;
+    }
+  }, [projectId, projectName]);
+
+  // دیبانس ۲.۵ ثانیه‌ای — پخش (تغییر time هر فریم) تایمر را ریست می‌کند
+  useEffect(() => {
+    if (busy) return;
+    const p = projRef.current;
+    const empty = !p.clips.length && !p.overlays.length && !p.texts.length && !p.audios.length;
+    if (empty) return;
+    const h = setTimeout(() => {
+      void runAutosave();
+    }, 2500);
+    return () => clearTimeout(h);
+  });
 
   // ── assets ──
   const addAsset = useCallback((a: MediaAsset) => {
@@ -556,6 +659,72 @@ export function VideoView() {
     mutate((p) => p.markers.push({ id: uid("mk"), t: time, label: "" }));
     toast.success(`نشانگر روی ${fmtTime(time)} ثبت شد 📍`);
   }, [mutate, time]);
+
+  // ── keyboard shortcuts (§67 مشخصات) ──
+  const shortcutsRef = useRef({ togglePlay, splitSelected, deleteSelected, duplicateSelected, undo, redo, seek, setSheet, selection });
+  shortcutsRef.current = { togglePlay, splitSelected, deleteSelected, duplicateSelected, undo, redo, seek, setSheet, selection };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const s = shortcutsRef.current;
+      const mod = e.ctrlKey || e.metaKey;
+      if (e.key === "Escape") {
+        s.setSheet(null);
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) s.redo();
+        else s.undo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        s.redo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        s.duplicateSelected();
+        return;
+      }
+      if (mod) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        s.togglePlay();
+        return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        s.deleteSelected();
+        return;
+      }
+      if (e.key === "s" || e.key === "S") {
+        s.splitSelected();
+        return;
+      }
+      if (e.key === "+" || e.key === "=") {
+        s.seek(timeRef.current + 1);
+        return;
+      }
+      if (e.key === "-") {
+        s.seek(Math.max(0, timeRef.current - 1));
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        s.seek(timeRef.current + (e.shiftKey ? 1 : 1 / 15));
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        s.seek(Math.max(0, timeRef.current - (e.shiftKey ? 1 : 1 / 15)));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // ── drag & reorder (NLE-grade) ──
   // کلیپ اصلی: درگ افقی = جابه‌جایی ترتیب | لایه‌ها: درگ افقی = جابه‌جایی start

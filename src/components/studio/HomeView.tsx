@@ -9,7 +9,8 @@ import {
 import { toast } from "sonner";
 import type { ViewId } from "./BottomNav";
 import { setAssistantPrefill, setPendingProject, setPendingTemplate } from "@/lib/video/transfer";
-import { listProjects, loadProject, deleteProject, duplicateProject, type SavedProjectMeta } from "@/lib/projects-db";
+import { listProjects, loadProject, deleteProject, duplicateProject, renameProject, type SavedProjectMeta } from "@/lib/projects-db";
+import { normalizeProject } from "@/lib/video/types";
 
 const QUICK_ACTIONS: { id: ViewId; title: string; desc: string; icon: React.ElementType; gradient: string }[] = [
   { id: "design", title: "تصویر AI", desc: "از متن به تصویر", icon: Wand2, gradient: "from-pink-500/30 to-rose-500/20" },
@@ -72,7 +73,8 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewId) => void }) {
         };
       });
       // durations re-probe lazily by engine; set rough ones for audio/video from project JSON asset meta is not stored — acceptable defaults
-      setPendingProject({ project: loaded.project, assets, name: loaded.meta.name });
+      // نرمال‌سازی اسکیما (پروژه‌های نسخه‌های قبل هم بدون شک باز می‌شوند)
+      setPendingProject({ project: normalizeProject(loaded.project), assets, name: loaded.meta.name });
       toast.success(`پروژه «${loaded.meta.name}» باز شد`);
       onNavigate("video");
     } catch {
@@ -83,6 +85,18 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewId) => void }) {
   const removeProject = async (id: string) => {
     await deleteProject(id);
     toast.success("پروژه حذف شد");
+    refresh();
+  };
+
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  const commitRename = async () => {
+    if (!renaming) return;
+    const name = renaming.name.trim();
+    if (name) {
+      const ok = await renameProject(renaming.id, name);
+      toast[ok ? "success" : "error"](ok ? "نام پروژه عوض شد" : "تغییر نام ناموفق بود");
+    }
+    setRenaming(null);
     refresh();
   };
 
@@ -241,9 +255,26 @@ export function HomeView({ onNavigate }: { onNavigate: (v: ViewId) => void }) {
                     </span>
                   </div>
                   <div className="p-2">
-                    <div className="text-xs font-bold truncate">{p.name}</div>
+                    {renaming?.id === p.id ? (
+                      <input
+                        autoFocus
+                        value={renaming.name}
+                        onChange={(e) => setRenaming({ id: p.id, name: e.target.value })}
+                        onBlur={commitRename}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void commitRename();
+                          if (e.key === "Escape") setRenaming(null);
+                        }}
+                        className="w-full text-xs font-bold bg-black/30 border border-primary/40 rounded px-1.5 py-1 outline-none"
+                        dir="auto"
+                      />
+                    ) : (
+                      <div className="text-xs font-bold truncate" onDoubleClick={() => setRenaming({ id: p.id, name: p.name })}>
+                        {p.name}
+                      </div>
+                    )}
                     <div className="text-[9px] text-muted-foreground mt-0.5">
-                      {new Date(p.updatedAt).toLocaleDateString("fa-IR")} • {p.aspect}
+                      {new Date(p.updatedAt).toLocaleDateString("fa-IR")} • {p.aspect} • دوبار کلیک روی نام = تغییر
                     </div>
                   </div>
                 </button>

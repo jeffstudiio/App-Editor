@@ -2,6 +2,8 @@
 // Types for the in-app video editor engine (استودیو ویدئو)
 // ─────────────────────────────────────────────────────────────
 
+import type { KeyframeMap } from "./keyframes";
+
 export type AspectId = "9:16" | "1:1" | "16:9" | "4:5" | "3:4";
 
 export const ASPECTS: { id: AspectId; w: number; h: number; name: string; hint: string }[] = [
@@ -192,6 +194,8 @@ export interface Clip {
   stab?: StabData;
   mask?: MaskState;
   enhance?: boolean; // «ارتقای کیفیت» — contrast/saturation clarity boost
+  /** keyframeهای ترنسفورم — زمان‌ها نسبت به شروع کلیپ */
+  kf?: KeyframeMap;
 }
 
 export type TextAnim = "none" | "fade" | "pop" | "slideUp" | "typewriter";
@@ -220,6 +224,8 @@ export interface TextItem {
   opacity: number;
   karaoke: boolean; // word-by-word highlight
   isCaption?: boolean;
+  /** keyframeهای opacity/pos/scale — زمان‌ها نسبت به start */
+  kf?: KeyframeMap;
 }
 
 export type VoiceEffect = "none" | "echo" | "deep" | "chipmunk";
@@ -254,6 +260,8 @@ export interface OverlayItem {
   filter: FilterState;
   chroma: ChromaState;
   mask?: MaskState;
+  /** keyframeهای ترنسفورم — زمان‌ها نسبت به start */
+  kf?: KeyframeMap;
 }
 
 export interface Marker {
@@ -273,6 +281,8 @@ export interface MediaAsset {
 }
 
 export interface Project {
+  /** نسخهٔ اسکیما — مایگریشن با normalizeProject (PROJECT_SCHEMA_VERSION در projects-db) */
+  schemaVersion?: number;
   aspect: AspectId;
   clips: Clip[];
   overlays: OverlayItem[];
@@ -282,7 +292,133 @@ export interface Project {
 }
 
 export function emptyProject(aspect: AspectId = "9:16"): Project {
-  return { aspect, clips: [], overlays: [], texts: [], audios: [], markers: [] };
+  return { schemaVersion: 2, aspect, clips: [], overlays: [], texts: [], audios: [], markers: [] };
+}
+
+/** مایگریشن/نرمال‌سازی هر Project خام (نسخه‌های قدیمی، JSON ناقص) به مدل فعلی */
+export function normalizeProject(raw: unknown): Project {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const arr = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
+  const num = (x: unknown, d: number) => (typeof x === "number" && Number.isFinite(x) ? x : d);
+  const tr = (x: unknown): TransformState => ({ ...DEFAULT_TRANSFORM, ...((x ?? {}) as Partial<TransformState>) });
+  const fl = (x: unknown): FilterState => ({ ...DEFAULT_FILTER, ...((x ?? {}) as Partial<FilterState>) });
+  const ch = (x: unknown): ChromaState => ({ ...DEFAULT_CHROMA, ...((x ?? {}) as Partial<ChromaState>) });
+  const mk = (x: unknown): MaskState | undefined =>
+    x && typeof x === "object" ? { ...DEFAULT_MASK, ...(x as Partial<MaskState>) } : undefined;
+
+  const clips = arr(r.clips).map((c0) => {
+    const c = (c0 ?? {}) as Record<string, unknown>;
+    return {
+      id: String(c.id ?? uid("cl")),
+      kind: c.kind === "image" ? ("image" as const) : ("video" as const),
+      assetId: String(c.assetId ?? ""),
+      name: String(c.name ?? "کلیپ"),
+      in: num(c.in, 0),
+      out: num(c.out, 4),
+      speed: Math.min(4, Math.max(0.25, num(c.speed, 1))),
+      transform: tr(c.transform),
+      filter: fl(c.filter),
+      chroma: ch(c.chroma),
+      volume: num(c.volume, 1),
+      muted: Boolean(c.muted),
+      fadeIn: num(c.fadeIn, 0),
+      fadeOut: num(c.fadeOut, 0),
+      transitionIn:
+        c.transitionIn && typeof c.transitionIn === "object"
+          ? (c.transitionIn as Clip["transitionIn"])
+          : { type: "none" as TransitionType, dur: 0.4 },
+      srcDur: num(c.srcDur, 10),
+      srcW: num(c.srcW, 1080),
+      srcH: num(c.srcH, 1920),
+      reverse: c.reverse && typeof c.reverse === "object" ? (c.reverse as Clip["reverse"]) : undefined,
+      stab: c.stab && typeof c.stab === "object" ? (c.stab as StabData) : undefined,
+      mask: mk(c.mask),
+      enhance: Boolean(c.enhance),
+      kf: c.kf && typeof c.kf === "object" ? (c.kf as Clip["kf"]) : undefined,
+    } satisfies Clip;
+  });
+
+  const overlays = arr(r.overlays).map((o0) => {
+    const o = (o0 ?? {}) as Record<string, unknown>;
+    return {
+      id: String(o.id ?? uid("ov")),
+      kind: o.kind === "video" ? ("video" as const) : ("image" as const),
+      assetId: String(o.assetId ?? ""),
+      name: String(o.name ?? "لایه"),
+      start: Math.max(0, num(o.start, 0)),
+      dur: Math.max(0.2, num(o.dur, 4)),
+      srcIn: num(o.srcIn, 0),
+      srcDur: num(o.srcDur, 4),
+      transform: tr(o.transform),
+      filter: fl(o.filter),
+      chroma: ch(o.chroma),
+      mask: mk(o.mask),
+      kf: o.kf && typeof o.kf === "object" ? (o.kf as OverlayItem["kf"]) : undefined,
+    } satisfies OverlayItem;
+  });
+
+  const texts = arr(r.texts).map((t0) => {
+    const t = (t0 ?? {}) as Record<string, unknown>;
+    const start = Math.max(0, num(t.start, 0));
+    return {
+      id: String(t.id ?? uid("tx")),
+      text: String(t.text ?? ""),
+      start,
+      end: Math.max(start + 0.3, num(t.end, start + 3)),
+      x: num(t.x, 0.5),
+      y: num(t.y, 0.5),
+      font: t.font === "Lalezar" ? ("Lalezar" as const) : ("Vazirmatn" as const),
+      weight: num(t.weight, 800),
+      size: num(t.size, 64),
+      color: String(t.color ?? "#f1e9e4"),
+      accent: String(t.accent ?? "#e0a78f"),
+      strokeColor: String(t.strokeColor ?? "#000000"),
+      strokeW: num(t.strokeW, 0),
+      bgColor: String(t.bgColor ?? "#000000"),
+      bgOpacity: num(t.bgOpacity, 0),
+      shadow: t.shadow !== false,
+      gradient: Boolean(t.gradient),
+      animIn: (["none", "fade", "pop", "slideUp", "typewriter"].includes(t.animIn as string)
+        ? t.animIn
+        : "fade") as TextAnim,
+      animOut: (["none", "fade", "pop", "slideUp", "typewriter"].includes(t.animOut as string)
+        ? t.animOut
+        : "none") as TextAnim,
+      rotate: num(t.rotate, 0),
+      opacity: num(t.opacity, 1),
+      karaoke: Boolean(t.karaoke),
+      isCaption: Boolean(t.isCaption),
+      kf: t.kf && typeof t.kf === "object" ? (t.kf as TextItem["kf"]) : undefined,
+    } satisfies TextItem;
+  });
+
+  const audios = arr(r.audios).map((a0) => {
+    const a = (a0 ?? {}) as Record<string, unknown>;
+    const start = Math.max(0, num(a.start, 0));
+    return {
+      id: String(a.id ?? uid("au")),
+      assetId: String(a.assetId ?? ""),
+      name: String(a.name ?? "صدا"),
+      start,
+      in: num(a.in, 0),
+      out: Math.max(a.in as number ?? 0 + 1, num(a.out, num(a.in, 0) + 10)),
+      srcDur: num(a.srcDur, 10),
+      volume: num(a.volume, 1),
+      fadeIn: num(a.fadeIn, 0),
+      fadeOut: num(a.fadeOut, 0),
+      effect: (["none", "echo", "deep", "chipmunk"].includes(a.effect as string) ? a.effect : "none") as AudioItem["effect"],
+      duckCaptions: Boolean(a.duckCaptions),
+      fromTts: Boolean(a.fromTts),
+    } satisfies AudioItem;
+  });
+
+  const markers = arr(r.markers).map((m0) => {
+    const m = (m0 ?? {}) as Record<string, unknown>;
+    return { id: String(m.id ?? uid("mk")), t: Math.max(0, num(m.t, 0)), label: String(m.label ?? "") };
+  });
+
+  const aspect = (ASPECTS.some((a) => a.id === r.aspect) ? r.aspect : "9:16") as AspectId;
+  return { schemaVersion: 2, aspect, clips, overlays, texts, audios, markers };
 }
 
 export function clipDur(c: Clip): number {
