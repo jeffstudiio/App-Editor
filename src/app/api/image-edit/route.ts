@@ -1,6 +1,13 @@
+// ─────────────────────────────────────────────────────────────
+// POST /api/image-edit — ویرایش تصویر از طریق Capability Router
+// قرارداد قبلی حفظ شده + سقف حجم ورودی (§36)
+// ─────────────────────────────────────────────────────────────
+
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
-import { geminiEditImage } from "@/lib/video/gemini-image";
+import { AIError } from "@/lib/ai/core/ai-errors";
+import { base64Bytes, readJsonWithLimit } from "@/lib/ai/server/route-helpers";
+import { aiServer } from "@/lib/ai/server/registry";
+import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
 
 export const maxDuration = 180;
 
@@ -14,55 +21,54 @@ const SIZES = new Set([
   "720x1440",
 ]);
 
+const MAX_BODY_BYTES = 12 * 1024 * 1024; // تصویر base64 — سقف ~۸MB رسانه
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const prompt = String(body?.prompt ?? "").trim();
-    const imageBase64 = String(body?.image_base64 ?? "");
-    const size = SIZES.has(body?.size) ? body.size : "1024x1024";
-
-    if (!prompt || !imageBase64) {
+    const rl = rateLimit(`img-edit:${clientIp(req)}`, RATE_PRESETS.heavy);
+    if (!rl.ok) {
       return NextResponse.json(
-        { error: "prompt و image_base64 الزامی هستند." },
-        { status: 400 }
+        { error: "درخواست‌های ویرایش تصویر زیاد بوده — کمی صبر کن." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
       );
     }
 
-    // Optional Nano Banana (Gemini image) engine — BYO key
-    if (body?.engine === "gemini") {
-      const apiKey =
-        String(body?.apiKey ?? "").trim() || String(process.env.GEMINI_API_KEY ?? "").trim();
-      const model = String(body?.model ?? "").trim() || "gemini-3.1-flash-image";
-      if (!apiKey) {
-        return NextResponse.json({ error: "برای نانو‌بنانا، کلید Gemini را در تنظیمات دستیار وارد کن." }, { status: 400 });
-      }
-      const g = await geminiEditImage(apiKey, model, prompt.slice(0, 1500), imageBase64);
-      if (!g.ok || !g.image_base64) {
-        return NextResponse.json({ error: g.message ?? "ویرایش نانو‌بنانا ناموفق بود." }, { status: 400 });
-      }
-      return NextResponse.json({ image_base64: g.image_base64, engine: "gemini", via: g.via });
+    const body = await readJsonWithLimit(req, MAX_BODY_BYTES);
+    if (!body.ok) return body.resp;
+    const prompt = String(body.body?.prompt ?? "").trim();
+    const imageBase64 = String(body.body?.image_base64 ?? "");
+    const size = SIZES.has(String(body.body?.size)) ? String(body.body.size) : "1024x1024";
+
+    if (!prompt || !imageBase64) {
+      return NextResponse.json({ error: "prompt و image_base64 الزامی هستند." }, { status: 400 });
+    }
+    if (base64Bytes(imageBase64) > 8 * 1024 * 1024) {
+      return NextResponse.json({ error: "تصویر ورودی بزرگ‌تر از ۸ مگابایت است." }, { status: 413 });
     }
 
-    const dataUrl = imageBase64.startsWith("data:")
-      ? imageBase64
-      : `data:image/jpeg;base64,${imageBase64}`;
+    const apiKey = String(body.body?.apiKey ?? "").trim() || undefined;
+    const model = String(body.body?.model ?? "").trim() || undefined;
+    const prefer = body.body?.engine === "gemini" ? ("gemini" as const) : undefined;
 
-    const zai = await ZAI.create();
-    const response = await zai.images.generations.edit({
-      prompt: prompt.slice(0, 1500),
-      image: dataUrl,
-      size,
-    });
-    const b64 = response?.data?.[0]?.base64;
-    if (!b64) {
-      return NextResponse.json({ error: "ویرایش تصویر نتیجه‌ای برنگرداند." }, { status: 502 });
-    }
-    return NextResponse.json({ image_base64: b64 });
-  } catch (err) {
-    console.error("[image-edit] error:", err);
-    return NextResponse.json(
-      { error: "ویرایش هوشمند تصویر ناموفق بود؛ دوباره تلاش کن." },
-      { status: 500 }
+    const { router } = aiServer();
+    const result = await router.route(
+      "image_editing",
+      { capability: "image_editing", prompt: prompt.slice(0, 1500), imageBase64, size, apiKey, model },
+      { prefer },
     );
+    if (result.output.kind !== "image") {
+      return NextResponse.json({ error: "خروجی تصویر نامعتبر بود." }, { status: 502 });
+    }
+    return NextResponse.json({
+      image_base64: result.output.imageBase64,
+      engine: result.provider.id === "zai" ? undefined : result.provider.id,
+      via: result.via,
+    });
+  } catch (err) {
+    if (err instanceof AIError) {
+      return NextResponse.json({ error: err.userMessage }, { status: err.httpStatus });
+    }
+    console.error("[image-edit] error:", err);
+    return NextResponse.json({ error: "ویرایش هوشمند تصویر ناموفق بود؛ دوباره تلاش کن." }, { status: 500 });
   }
 }

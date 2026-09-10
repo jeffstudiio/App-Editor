@@ -1,6 +1,14 @@
+// ─────────────────────────────────────────────────────────────
+// POST /api/image-gen — تولید تصویر از طریق Capability Router
+// قرارداد قبلی حفظ شده: {prompt, size, engine?, apiKey?, model?}
+// زنجیره: انتخاب صریح (gemini) → وگرنه zai → gemini(کلید سرور)
+// ─────────────────────────────────────────────────────────────
+
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
-import { geminiTextToImage, sizeToAspect } from "@/lib/video/gemini-image";
+import { AIError } from "@/lib/ai/core/ai-errors";
+import { aiServer } from "@/lib/ai/server/registry";
+import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
+import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
 
 export const maxDuration = 180;
 
@@ -14,45 +22,49 @@ const SIZES = new Set([
   "720x1440",
 ]);
 
+const MAX_BODY_BYTES = 2 * 1024 * 1024; // فقط متن — ۲MB کافی است
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const prompt = String(body?.prompt ?? "").trim();
-    const size = SIZES.has(body?.size) ? body.size : "768x1344";
+    const rl = rateLimit(`img-gen:${clientIp(req)}`, RATE_PRESETS.heavy);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "درخواست‌های تولید تصویر زیاد بوده — کمی صبر کن." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+      );
+    }
+
+    const body = await readJsonWithLimit(req, MAX_BODY_BYTES);
+    if (!body.ok) return body.resp;
+    const prompt = String(body.body?.prompt ?? "").trim();
+    const size = SIZES.has(String(body.body?.size)) ? String(body.body.size) : "768x1344";
     if (!prompt) {
       return NextResponse.json({ error: "prompt الزامی است." }, { status: 400 });
     }
 
-    // Optional Nano Banana (Gemini image) engine — BYO key
-    if (body?.engine === "gemini") {
-      const apiKey =
-        String(body?.apiKey ?? "").trim() || String(process.env.GEMINI_API_KEY ?? "").trim();
-      const model = String(body?.model ?? "").trim() || "gemini-3.1-flash-image";
-      if (!apiKey) {
-        return NextResponse.json({ error: "برای نانو‌بنانا، کلید Gemini را در تنظیمات دستیار وارد کن." }, { status: 400 });
-      }
-      const g = await geminiTextToImage(apiKey, model, prompt.slice(0, 1500), sizeToAspect(size));
-      if (!g.ok || !g.image_base64) {
-        return NextResponse.json({ error: g.message ?? "تولید تصویر نانو‌بنانا ناموفق بود." }, { status: 400 });
-      }
-      return NextResponse.json({ image_base64: g.image_base64, engine: "gemini", via: g.via });
-    }
+    const apiKey = String(body.body?.apiKey ?? "").trim() || undefined;
+    const model = String(body.body?.model ?? "").trim() || undefined;
+    const prefer = body.body?.engine === "gemini" ? ("gemini" as const) : undefined;
 
-    const zai = await ZAI.create();
-    const response = await zai.images.generations.create({
-      prompt: prompt.slice(0, 1500),
-      size,
-    });
-    const b64 = response?.data?.[0]?.base64;
-    if (!b64) {
-      return NextResponse.json({ error: "تصویری تولید نشد؛ دوباره تلاش کن." }, { status: 502 });
-    }
-    return NextResponse.json({ image_base64: b64 });
-  } catch (err) {
-    console.error("[image-gen] error:", err);
-    return NextResponse.json(
-      { error: "تولید تصویر ناموفق بود؛ چند لحظه بعد دوباره تلاش کن." },
-      { status: 500 }
+    const { router } = aiServer();
+    const result = await router.route(
+      "image_generation",
+      { capability: "image_generation", prompt: prompt.slice(0, 1500), size, apiKey, model },
+      { prefer },
     );
+    if (result.output.kind !== "image") {
+      return NextResponse.json({ error: "خروجی تصویر نامعتبر بود." }, { status: 502 });
+    }
+    return NextResponse.json({
+      image_base64: result.output.imageBase64,
+      engine: result.provider.id === "zai" ? undefined : result.provider.id,
+      via: result.via,
+    });
+  } catch (err) {
+    if (err instanceof AIError) {
+      return NextResponse.json({ error: err.userMessage }, { status: err.httpStatus });
+    }
+    console.error("[image-gen] error:", err);
+    return NextResponse.json({ error: "تولید تصویر ناموفق بود؛ چند لحظه بعد دوباره تلاش کن." }, { status: 500 });
   }
 }
