@@ -14,6 +14,7 @@ import {
   type Project,
   type StabData,
 } from "./types";
+import { evalKf } from "./keyframes";
 import { buildMaskPath, chromaFrame, cssFilter, drawTempOverlay, drawTextItem, drawVignette, enhancedFilter, maskFrame } from "./filters";
 
 type Tick = (t: number, playing: boolean) => void;
@@ -286,9 +287,22 @@ export class EditorEngine {
       }
     }
 
-    // texts (captions + titles)
-    for (const item of p.texts) {
-      if (t >= item.start && t < item.end) drawTextItem(ctx, item, t, W, H);
+    // texts (captions + titles) — با پشتیبانی keyframe
+    for (let item of p.texts) {
+      if (t >= item.start && t < item.end) {
+        if (item.kf) {
+          const lt = t - item.start;
+          item = {
+            ...item,
+            opacity: evalKf(item.kf.opacity, lt, item.opacity),
+            x: evalKf(item.kf.x, lt, item.x),
+            y: evalKf(item.kf.y, lt, item.y),
+            rotate: evalKf(item.kf.rotate, lt, item.rotate),
+            size: item.size * evalKf(item.kf.scale, lt, 1),
+          };
+        }
+        drawTextItem(ctx, item, t, W, H);
+      }
     }
     ctx.restore();
   }
@@ -313,8 +327,19 @@ export class EditorEngine {
     const dur = clipDur(clip);
     const tr = this.transitionState(clip, local);
     const scale = W / 1080;
+    // ترنسفورم مؤثر: اگر keyframe برای پراپرتی‌ای هست، مقدار همان لحظه جایگزین می‌شود
+    const ktf = clip.kf
+      ? {
+          ...clip.transform,
+          scale: evalKf(clip.kf.scale, local, clip.transform.scale),
+          x: evalKf(clip.kf.x, local, clip.transform.x),
+          y: evalKf(clip.kf.y, local, clip.transform.y),
+          rotate: evalKf(clip.kf.rotate, local, clip.transform.rotate),
+          opacity: evalKf(clip.kf.opacity, local, clip.transform.opacity),
+        }
+      : clip.transform;
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, clip.transform.opacity * tr.alpha));
+    ctx.globalAlpha = Math.max(0, Math.min(1, ktf.opacity * tr.alpha));
 
     if (clip.transitionIn.type === "slide") {
       ctx.translate(tr.dx * W, 0);
@@ -366,7 +391,7 @@ export class EditorEngine {
     }
 
     if (source) {
-      const tf = clip.transform;
+      const tf = ktf;
 
       // smart stabilization: per-frame counter-offset + zoom margin to hide edges
       let stabDx = 0;
@@ -481,7 +506,18 @@ export class EditorEngine {
     if (!source || !srcW) return;
 
     ctx.save();
-    ctx.globalAlpha = ov.transform.opacity;
+    // ترنسفورم مؤثر overlay با keyframe (زمان لوکال)
+    const otf = ov.kf
+      ? {
+          ...ov.transform,
+          scale: evalKf(ov.kf.scale, local, ov.transform.scale),
+          x: evalKf(ov.kf.x, local, ov.transform.x),
+          y: evalKf(ov.kf.y, local, ov.transform.y),
+          rotate: evalKf(ov.kf.rotate, local, ov.transform.rotate),
+          opacity: evalKf(ov.kf.opacity, local, ov.transform.opacity),
+        }
+      : ov.transform;
+    ctx.globalAlpha = Math.max(0, Math.min(1, otf.opacity));
     ctx.filter = cssFilter(ov.filter, scale);
 
     let drawSource: HTMLVideoElement | HTMLImageElement = source;
@@ -507,7 +543,7 @@ export class EditorEngine {
     }
 
     const base = Math.min(W / srcW, H / srcH); // contain
-    const tf = ov.transform;
+    const tf = otf;
     ctx.translate(W / 2 + tf.x * W, H / 2 + tf.y * H);
     ctx.rotate((tf.rotate * Math.PI) / 180);
     ctx.scale(tf.scale * (tf.flipH ? -1 : 1), tf.scale * (tf.flipV ? -1 : 1));

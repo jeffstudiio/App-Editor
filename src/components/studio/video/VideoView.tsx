@@ -7,7 +7,7 @@ import {
   Gauge, Volume2, Palette, FlipHorizontal2, ArrowLeftRight, Snowflake,
   Repeat, Trash2, Copy, Type, Music4, Captions, Sparkles, MapPin,
   Layers, Crop, Settings2, Wand2, AudioWaveform, Vibrate, LayoutTemplate,
-  Smile, AudioLines, Frame, TrendingUp, SkipForward, Save, WandSparkles,
+  Smile, AudioLines, Frame, TrendingUp, SkipForward, Save, WandSparkles, Diamond,
 } from "lucide-react";
 import {
   EditorEngine, analyzeStabilization, buildReverse,
@@ -27,6 +27,7 @@ import { CaptionSheet, AiEditSheet, AutoVideoSheet, ExportSheet, MarkersSheet } 
 import { DubbingSheet } from "./DubbingSheet";
 import { TemplatesSheet } from "./TemplatesSheet";
 import { StickersSheet, SfxSheet, MaskSheet, AiClipperSheet, ExtendSheet, ProjectSaveSheet } from "./MoreSheets";
+import { KeyframeSheet } from "./KeyframeSheet";
 import { EDIT_TEMPLATES, applyTemplateToProject } from "@/lib/video/templates";
 import { consumePendingProject, consumePendingTemplate, consumePendingBank } from "@/lib/video/transfer";
 import { buildProjectFromBank } from "@/lib/video/bank-apply";
@@ -72,6 +73,7 @@ const SHEET_TITLES: Record<string, string> = {
   "ai-clipper": "برش هوشمند صحنه",
   extend: "ادامه ویدئو",
   project: "ذخیره پروژه",
+  kf: "انیمیشن کلیدی (Keyframe)",
 };
 
 export function VideoView() {
@@ -1002,6 +1004,7 @@ export function VideoView() {
         { icon: Palette, label: "فیلتر", onClick: () => setSheet("clip-look") },
         { icon: TrendingUp, label: selectedClip.enhance ? "کیفیت+ ✓" : "کیفیت+", onClick: toggleEnhance, accent: !!selectedClip.enhance } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
         { icon: Frame, label: selectedClip.mask?.shape && selectedClip.mask.shape !== "none" ? "ماسک ✓" : "ماسک", onClick: () => setSheet("mask"), accent: !!(selectedClip.mask && selectedClip.mask.shape !== "none") } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
+        { icon: Diamond, label: selectedClip.kf ? "کی‌فریم ✓" : "کی‌فریم", onClick: () => setSheet("kf"), accent: !!selectedClip.kf } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
         { icon: FlipHorizontal2, label: "چرخش", onClick: () => setSheet("clip-motion") },
         { icon: ArrowLeftRight, label: "ترنزیشن", onClick: () => setSheet("transition") },
         { icon: Layers, label: "کروما", onClick: () => setSheet("chroma") },
@@ -1016,6 +1019,7 @@ export function VideoView() {
           { icon: Settings2, label: "زمان", onClick: () => setSheet("clip-basic") },
           { icon: Palette, label: "فیلتر", onClick: () => setSheet("clip-look") },
           { icon: Frame, label: "ماسک", onClick: () => setSheet("mask") },
+          { icon: Diamond, label: selectedOverlay?.kf ? "کی‌فریم ✓" : "کی‌فریم", onClick: () => setSheet("kf"), accent: !!selectedOverlay?.kf } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
           { icon: FlipHorizontal2, label: "چرخش", onClick: () => setSheet("clip-motion") },
           { icon: Layers, label: "کروما", onClick: () => setSheet("chroma") },
           { icon: Copy, label: "کپی", onClick: duplicateSelected },
@@ -1383,6 +1387,7 @@ export function VideoView() {
             {sheet === "stickers" && <StickersSheet ctx={ctx} />}
             {sheet === "sfx" && <SfxSheet ctx={ctx} />}
             {sheet === "mask" && <MaskSheet ctx={ctx} />}
+            {sheet === "kf" && <KeyframeSheet ctx={ctx} />}
             {sheet === "ai-clipper" && <AiClipperSheet ctx={ctx} />}
             {sheet === "extend" && <ExtendSheet ctx={ctx} />}
             {sheet === "project" && (
