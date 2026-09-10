@@ -21,7 +21,7 @@ export function buildPlannerSystemPrompt(pack: CreativePack | null): string {
   - style_titles: font: "Vazirmatn" | "Lalezar"
   - set_caption_style.preset: "impact" | "neon" | "minimal" | "classic" | "lalezar"
   - change_speed.speed: 0.25..4
-  - add_transition.type: "none" | "fade" | "black" | "slide" | "zoom"  ; dur 0.1-2  ; target: "all" | "clip"
+  - add_transition.type: "fade" | "dipBlack" | "dipWhite" | "slide" | "push" | "zoom" | "blur" | "wipe" | "flash" | "spin" | "glitch" | "lightLeak"  ; dur 0.1-1.5  ; direction (slide/push/wipe) "left"|"right"|"up"|"down"  ; target: "all" | "clip"  — with target:"clip" the transition attaches ONLY to that clip's incoming boundary (edit point), never the whole timeline
   - set_volume.target: "clips" | "audios"  (clips=footage volume, audios=music/voice), volume 0..2
   - duck_music.volume: 0..1 (default 0.25)
   - add_keyframe: prop: "scale"|"x"|"y"|"rotate"|"opacity" ; ease: "linear"|"in"|"out"|"inout"|"back"|"elastic"|"bounce"

@@ -45,7 +45,6 @@ function makeImageClip(asset: MediaAsset, dur: number, name: string, index: numb
     muted: true,
     fadeIn: 0,
     fadeOut: 0,
-    transitionIn: { type: "fade", dur: 0.4 },
     srcDur: dur,
     srcW: asset.width || 768,
     srcH: asset.height || 1344,
@@ -732,7 +731,7 @@ export function MarkersSheet({ ctx }: { ctx: EditorCtx }) {
           const d = (c.out - c.in) / (c.kind === "image" ? 1 : c.speed);
           if (at > acc + 0.25 && at < acc + d - 0.25) {
             const srcSplit = c.in + (at - acc) * c.speed;
-            const right = { ...structuredClone(c), id: uid("cl"), in: srcSplit, out: c.out, transitionIn: { type: "none" as const, dur: 0 }, reverse: undefined };
+            const right = { ...structuredClone(c), id: uid("cl"), in: srcSplit, out: c.out, reverse: undefined };
             c.out = srcSplit;
             p.clips.splice(i + 1, 0, right);
             n++;

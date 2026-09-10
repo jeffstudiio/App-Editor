@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
-  ASPECTS, DEFAULT_CROP, DEFAULT_FILTER, DEFAULT_TRANSFORM, FILTER_PRESETS, TRANSITIONS,
+  ASPECTS, DEFAULT_CROP, DEFAULT_FILTER, DEFAULT_TRANSFORM, FILTER_PRESETS,
   isCropped, sanitizeCrop,
   type Clip, type CropState, type FilterState, type OverlayItem, type TransformState,
 } from "@/lib/video/types";
@@ -342,41 +342,6 @@ export function CropSheet({ ctx }: { ctx: EditorCtx }) {
       <div className={`text-center text-xs rounded-lg py-2 ${active ? "bg-primary/10 text-primary" : "bg-secondary/40 text-muted-foreground"}`}>
         {active ? `کراپ فعال: ${Math.round(crop.w * crop.h * 100)}٪ از فریم منبع` : "کراپی فعال نیست"}
       </div>
-    </div>
-  );
-}
-
-// ── transition ──
-
-export function TransitionSheet({ ctx }: { ctx: EditorCtx }) {
-  const { clip } = useSelected(ctx);
-  if (!clip) return <EmptyHint />;
-  return (
-    <div className="space-y-4">
-      <p className="text-[11px] text-muted-foreground">ترنزیشن ورودی برای شروع این کلیپ اعمال می‌شود.</p>
-      <div className="grid grid-cols-5 gap-2">
-        {TRANSITIONS.map((tr) => (
-          <button
-            key={tr.id}
-            onClick={() => ctx.mutate((p) => { const c = p.clips.find((x) => x.id === clip.id); if (c) c.transitionIn = { type: tr.id, dur: c.transitionIn.dur || 0.5 }; })}
-            className={`rounded-xl border p-2 text-center text-[10px] ${clip.transitionIn.type === tr.id ? "border-primary bg-primary/10" : "border-border bg-secondary/50"}`}
-          >
-            <div className="text-lg">{tr.emoji}</div>
-            {tr.name}
-          </button>
-        ))}
-      </div>
-      {clip.transitionIn.type !== "none" && (
-        <SliderRow
-          label="مدت ترنزیشن"
-          value={clip.transitionIn.dur}
-          min={0.2}
-          max={2}
-          step={0.05}
-          onChange={(v) => ctx.mutate((p) => { const c = p.clips.find((x) => x.id === clip.id); if (c) c.transitionIn = { ...c.transitionIn, dur: v }; })}
-          fmt={(v) => `${v.toFixed(2)}s`}
-        />
-      )}
     </div>
   );
 }

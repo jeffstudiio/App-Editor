@@ -5,8 +5,9 @@
 // ─────────────────────────────────────────────────────────────
 
 import { removeKeyAt, upsertKey, type KfProp } from "@/lib/video/keyframes";
-import { clipToOverlayPayload, overlayToMainInsert, replaceSource } from "@/lib/video/edit-ops";
+import { clipToOverlayPayload, dropTransitionsTouching, overlayToMainInsert, replaceSource, setBoundaryTransition, splitClipAt } from "@/lib/video/edit-ops";
 import {
+  cleanupTransitions,
   clipDur, clipStart, uid,
   DEFAULT_CHROMA, sanitizeCrop,
   type AudioItem, type Clip, type FilterState, type MediaAsset,
@@ -227,18 +228,11 @@ export function applySyncCommand(
           const c = p.clips[i];
           const d = clipDur(c);
           if (at > acc + 0.25 && at < acc + d - 0.25) {
-            const leftTimeline = at - acc;
-            const splitSrc = c.in + leftTimeline * c.speed;
-            const right: Clip = {
-              ...structuredClone(c),
-              id: uid("clip"),
-              in: splitSrc,
-              out: c.out,
-              transitionIn: { type: "none", dur: 0 },
-              reverse: undefined,
-            };
-            c.out = splitSrc;
-            p.clips.splice(i + 1, 0, right);
+            const splitSrc = c.in + (at - acc) * c.speed;
+            const res = splitClipAt(p.clips as unknown as Parameters<typeof splitClipAt>[0], i, splitSrc, () => uid("clip"));
+            if (!res) return { tool: "split_clip", ok: false, message: "برش در این نقطه ممکن نیست" };
+            // ترنزیشن مرزِ (قبلی | کلیپ اصلی) روی نیمهٔ چپ می‌ماند (همان id) — مرز تازهٔ (چپ|راست) تمیز است
+            cleanupTransitions(p);
             return { tool: "split_clip", ok: true, message: `کلیپ در ${at.toFixed(1)}s بریده شد` };
           }
           acc += d;
@@ -249,7 +243,9 @@ export function applySyncCommand(
       case "remove_clip": {
         const i = p.clips.findIndex((x) => x.id === op.clipId);
         if (i < 0) return { tool: "remove_clip", ok: false, message: "کلیپ پیدا نشد" };
+        dropTransitionsTouching(p, String(op.clipId));
         p.clips.splice(i, 1);
+        cleanupTransitions(p);
         return { tool: "remove_clip", ok: true, message: "کلیپ حذف شد" };
       }
 
@@ -259,6 +255,7 @@ export function applySyncCommand(
         const idx = clamp(Number(op.index), 0, p.clips.length - 1);
         const [c] = p.clips.splice(i, 1);
         p.clips.splice(idx, 0, c);
+        cleanupTransitions(p); // ترنزیشن‌های مرزهایی که دیگر مجاور نیستند حذف می‌شوند
         return { tool: "move_clip", ok: true, message: `کلیپ به جایگاه ${idx + 1} رفت` };
       }
 
@@ -267,6 +264,7 @@ export function applySyncCommand(
         if (i < 0) return { tool: "duplicate_clip", ok: false, message: "کلیپ پیدا نشد" };
         const copy: Clip = { ...structuredClone(p.clips[i]), id: uid("clip") };
         p.clips.splice(i + 1, 0, copy);
+        cleanupTransitions(p); // مرز (اصلی | کپی) ترنزیشن مرز قدیمی را می‌شکند → cleanup
         return { tool: "duplicate_clip", ok: true, message: "کلیپ تکثیر شد" };
       }
 
@@ -366,7 +364,6 @@ export function applySyncCommand(
           muted: ov.kind !== "video",
           fadeIn: 0,
           fadeOut: 0,
-          transitionIn: { type: "none", dur: 0 },
           srcDur: ov.kind === "video" ? ov.srcDur : ov.dur,
           srcW: 1080,
           srcH: 1920,
@@ -380,30 +377,59 @@ export function applySyncCommand(
           () => uid("clip"),
           ({ clips }, index, srcSplit) => {
             const c = clips[index] as unknown as Clip;
-            const right: Clip = { ...structuredClone(c), id: uid("clip"), in: srcSplit, out: c.out, transitionIn: { type: "none", dur: 0 }, reverse: undefined };
+            const right: Clip = { ...structuredClone(c), id: uid("clip"), in: srcSplit, out: c.out, reverse: undefined };
             c.out = srcSplit;
             clips.splice(index + 1, 0, right as unknown as Record<string, unknown> & { id: string });
           }
         );
         if (!res.ok) return { tool: "to_main_track", ok: false, message: res.message };
+        cleanupTransitions(p); // مرزهای جدید ممکن است ترنزیشن‌های قدیمی را بی‌معنا کرده باشند
         p.overlays.splice(oi, 1);
         return { tool: "to_main_track", ok: true, message: res.message };
       }
 
       case "add_transition": {
         const type = op.type as TransitionType;
-        const dur = clamp(Number(op.dur ?? 0.5), 0.1, 2);
-        const set = (c: Clip) => {
-          c.transitionIn = { type, dur };
-        };
+        const dur = clamp(Number(op.dur ?? 0.5), 0.1, 1.5);
+        const direction = (op as { direction?: string }).direction as "left" | "right" | "up" | "down" | undefined;
+        const spec = { type, dur, direction, easing: "smooth" as const };
         if (op.target === "clip" && typeof op.clipId === "string") {
-          const c = p.clips.find((x) => x.id === op.clipId);
-          if (!c) return { tool: "add_transition", ok: false, message: "کلیپ پیدا نشد" };
-          set(c);
-        } else {
-          p.clips.forEach(set);
+          const i = p.clips.findIndex((x) => x.id === op.clipId);
+          if (i < 0) return { tool: "add_transition", ok: false, message: "کلیپ پیدا نشد" };
+          if (i === 0) return { tool: "add_transition", ok: false, message: "اولین کلیپ مرز ورودی ندارد — کلیپ بعدی را هدف بگیر" };
+          const t = setBoundaryTransition(p, p.clips[i - 1].id, p.clips[i].id, spec, () => uid("tr"));
+          if (!t) return { tool: "add_transition", ok: false, message: "مرز معتبر پیدا نشد" };
+          return { tool: "add_transition", ok: true, message: `ترنزیشن ${type} روی مرز ${i} قرار گرفت` };
         }
-        return { tool: "add_transition", ok: true, message: `ترنزیشن ${type === "none" ? "حذف" : type} شد` };
+        // target=all → همهٔ مرزهای داخلی (هر مرز ترنزیشن مستقل خودش را می‌گیرد)
+        if (p.clips.length < 2) return { tool: "add_transition", ok: false, message: "برای ترنزیشن حداقل دو کلیپ لازم است" };
+        let n = 0;
+        for (let i = 1; i < p.clips.length; i++) {
+          if (setBoundaryTransition(p, p.clips[i - 1].id, p.clips[i].id, spec, () => uid("tr"))) n++;
+        }
+        return { tool: "add_transition", ok: n > 0, message: n > 0 ? `ترنزیشن ${type} روی ${n.toLocaleString("fa-IR")} مرز اعمال شد` : "هیچ مرزی پیدا نشد" };
+      }
+
+      case "set_transition_duration": {
+        const i = p.clips.findIndex((x) => x.id === op.clipId);
+        if (i < 0 || i === 0) return { tool: "set_transition_duration", ok: false, message: "این کلیپ مرز ورودی ندارد" };
+        const prev = p.clips[i - 1];
+        const existing = p.transitions.find((t) => t.leftClipId === prev.id && t.rightClipId === p.clips[i].id);
+        if (!existing) return { tool: "set_transition_duration", ok: false, message: "روی این مرز ترنزیشنی نیست" };
+        const t = setBoundaryTransition(p, prev.id, p.clips[i].id, { type: existing.type, dur: clamp(Number(op.dur), 0.1, 1.5) }, () => uid("tr"));
+        return t
+          ? { tool: "set_transition_duration", ok: true, message: `مدت ترنزیشن به ${t.dur.toFixed(2)}s رسید` }
+          : { tool: "set_transition_duration", ok: false, message: "تغییر مدت ناموفق بود" };
+      }
+
+      case "remove_transition": {
+        const i = p.clips.findIndex((x) => x.id === op.clipId);
+        if (i < 0 || i === 0) return { tool: "remove_transition", ok: false, message: "این کلیپ مرز ورودی ندارد" };
+        const before = p.transitions.length;
+        p.transitions = p.transitions.filter((t) => !(t.leftClipId === p.clips[i - 1].id && t.rightClipId === p.clips[i].id));
+        return p.transitions.length < before
+          ? { tool: "remove_transition", ok: true, message: "ترنزیشن این مرز حذف شد — بقیه دست‌نخورده" }
+          : { tool: "remove_transition", ok: false, message: "روی این مرز ترنزیشنی نبود" };
       }
 
       case "set_fades": {
@@ -530,7 +556,6 @@ export function insertImageAsset(p: Project, asset: MediaAsset, index: number, d
     muted: false,
     fadeIn: 0,
     fadeOut: 0,
-    transitionIn: { type: "fade", dur: 0.4 },
     srcDur: dur,
     srcW: asset.width || 1080,
     srcH: asset.height || 1920,

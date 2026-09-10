@@ -7,8 +7,10 @@ import { LayoutTemplate, Check } from "lucide-react";
 import {
   DEFAULT_FILTER,
   FILTER_PRESETS,
+  uid,
   type TextItem,
 } from "@/lib/video/types";
+import { setBoundaryTransition } from "@/lib/video/edit-ops";
 import { SUBTITLE_PRESETS } from "@/lib/studio-data";
 import { EDIT_TEMPLATES, type EditTemplate } from "@/lib/video/templates";
 import type { EditorCtx } from "./ctx";
@@ -25,11 +27,17 @@ export function TemplatesSheet({ ctx }: { ctx: EditorCtx }) {
     ctx.mutate((p) => {
       // 1) aspect
       p.aspect = tpl.aspect;
-      // 2) filter + transition on every clip
+      // 2) filter on every clip + ترنزیشن قالب روی مرزها (مدل Edit-Point)
       const fp = FILTER_PRESETS.find((x) => x.id === tpl.filterPresetId);
       for (const c of p.clips) {
         if (fp) c.filter = { ...DEFAULT_FILTER, ...fp.state, presetId: fp.id };
-        c.transitionIn = { type: tpl.transition.type, dur: tpl.transition.dur };
+      }
+      if (tpl.transition) {
+        for (let i = 1; i < p.clips.length; i++) {
+          setBoundaryTransition(p, p.clips[i - 1].id, p.clips[i].id, { ...tpl.transition }, () => uid("tr"));
+        }
+      } else {
+        p.transitions = [];
       }
       // 3) title
       if (tpl.title) {

@@ -3,6 +3,9 @@
 // بدون وابستگی به React/DOM تا تست‌پذیر باشد (test-core-engine).
 // ─────────────────────────────────────────────────────────────
 
+import { cleanupTransitions, maxBoundaryDur, sanitizeTransition, type Project, type TimelineTransition, type TransitionDirection, type TransitionEasing, type TransitionType } from "./types";
+import { splitKeyframeMap, type KeyframeMap } from "./keyframes";
+
 /** نزدیک‌ترین نقطهٔ اسنپ داخل آستانه را برمی‌گرداند؛ وگرنه همان t. */
 export function snapTime(t: number, points: number[], thr = 0.15): number {
   let best = t;
@@ -275,3 +278,102 @@ export function overlayToMainInsert(
   clips.splice(idx, 0, insert);
   return { ok: true, message: `لایه به ترک اصلی در ${overlayStart.toFixed(1)}s منتقل شد` };
 }
+
+// ─────────────────────────────────────────────────────────────
+// برش واقعی (P0 — Split) + عملیات Edit-Point / ترنزیشن (§6-§12 مشخصات)
+// مرجع حقیقت واحد: همهٔ مسیرها (UI، Agent، درج لایه) از همین‌جا برش می‌زنند.
+// ─────────────────────────────────────────────────────────────
+
+/** ورودی ساختاریافتهٔ کلیپ برای برش — از Clip و OverlayItem قابل استفاده است */
+export interface SplittableClip {
+  id: string;
+  in: number;
+  out: number;
+  speed: number;
+  kind: "video" | "image";
+  kf?: KeyframeMap;
+  [extra: string]: unknown;
+}
+
+/**
+ * برش واقعی کلیپ iام در نقطهٔ منبع srcSplit:
+ * - A (نیمهٔ چپ) همان id و هویت قبلی را نگه می‌دارد — پس ترنزیشن چسبیده به مرزِ (کلیپ قبلی | این کلیپ)
+ *   خودکار روی A می‌ماند و مرز (A|B) تازه و بدون ترنزیشن است (§6).
+ * - ترنسفورم/فیلتر/ماسک/کراپ/صدا در هر دو نیمه حفظ می‌شود؛ کی‌فریم‌ها با پیوستگی شکسته می‌شوند.
+ * خروجی: id نیمه‌ها، یا null اگر برش ممکن نباشد.
+ */
+export function splitClipAt(
+  clips: SplittableClip[],
+  index: number,
+  srcSplit: number,
+  makeId: () => string
+): { leftId: string; rightId: string } | null {
+  const orig = clips[index];
+  if (!orig) return null;
+  if (orig.kind === "video" && (srcSplit <= orig.in + 0.12 || srcSplit >= orig.out - 0.12)) return null;
+  if (orig.kind === "image" && (srcSplit <= orig.in + 0.12 || srcSplit >= orig.out - 0.12)) return null;
+  const localSplit = (srcSplit - orig.in) / (orig.speed || 1);
+  const { a, b } = splitKeyframeMap(orig.kf, localSplit);
+  const right = {
+    ...structuredClone(orig),
+    id: makeId(),
+    in: srcSplit,
+    out: orig.out,
+    ...(b ? { kf: b } : { kf: undefined }),
+  };
+  orig.out = srcSplit;
+  if (a) orig.kf = a;
+  else delete orig.kf;
+  clips.splice(index + 1, 0, right);
+  return { leftId: orig.id, rightId: right.id };
+}
+
+/** افزودن/به‌روزرسانی ترنزیشن روی یک مرز — فقط اگر دو کلیپ مجاور باشند (§7) */
+export function setBoundaryTransition(
+  p: Project,
+  leftId: string,
+  rightId: string,
+  spec: { type: TransitionType; dur?: number; direction?: TransitionDirection; easing?: TransitionEasing; intensity?: number; tint?: "warm" | "gold" | "cool"; preset?: string },
+  makeId: () => string
+): TimelineTransition | null {
+  const li = p.clips.findIndex((c) => c.id === leftId);
+  const ri = p.clips.findIndex((c) => c.id === rightId);
+  if (li < 0 || ri !== li + 1) return null; // مرز نامعتبر — ترنزیشن معنا ندارد
+  const existing = p.transitions.find((t) => t.leftClipId === leftId && t.rightClipId === rightId);
+  const merged = sanitizeTransition(
+    {
+      ...(existing ?? {}),
+      ...spec,
+      id: existing?.id,
+      leftClipId: leftId,
+      rightClipId: rightId,
+    },
+    (() => {
+      const l = p.clips[li];
+      return l.reverse ? l.reverse.frames.length / l.reverse.fps : Math.max(0.1, (l.out - l.in) / (l.kind === "image" ? 1 : l.speed));
+    })(),
+    (() => {
+      const r = p.clips[ri];
+      return r.reverse ? r.reverse.frames.length / r.reverse.fps : Math.max(0.1, (r.out - r.in) / (r.kind === "image" ? 1 : r.speed));
+    })(),
+    makeId
+  );
+  if (!merged) return null;
+  if (existing) p.transitions = p.transitions.map((t) => (t.id === existing.id ? merged : t));
+  else p.transitions.push(merged);
+  return merged;
+}
+
+/** حذف ترنزیشن یک مرز — فقط همان مرز، بقیه دست‌نخورده (§44 تست ۴) */
+export function removeBoundaryTransition(p: Project, leftId: string, rightId: string): boolean {
+  const before = p.transitions.length;
+  p.transitions = p.transitions.filter((t) => !(t.leftClipId === leftId && t.rightClipId === rightId));
+  return p.transitions.length < before;
+}
+
+/** حذف همهٔ ترنزیشن‌های ورودیِ یک کلیپ (مرز چپ و راستش) — برای حذف/تعویض کلیپ */
+export function dropTransitionsTouching(p: Project, clipId: string): void {
+  p.transitions = p.transitions.filter((t) => t.leftClipId !== clipId && t.rightClipId !== clipId);
+}
+
+export { cleanupTransitions, maxBoundaryDur };

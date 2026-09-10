@@ -13,6 +13,9 @@ import {
   type MediaAsset,
   type Project,
   type StabData,
+  type TimelineTransition,
+  type TransitionDirection,
+  type TransitionEasing,
 } from "./types";
 import { evalKf } from "./keyframes";
 import { DEFAULT_CROP, isCropped } from "./types";
@@ -57,6 +60,16 @@ export function exportDims(aspect: Project["aspect"], longSide: number) {
     ew = Math.round(((eh * w) / h) / 2) * 2;
   }
   return { w: ew, h: eh };
+}
+
+/** حالت افکت ورودیِ کلیپ — drawClip آن را قبل از رسم اعمال می‌کند */
+interface FxState {
+  alphaMul?: number;
+  dxMul?: number;
+  dyMul?: number;
+  scaleMul?: number;
+  rotAdd?: number;
+  blurAdd?: number;
 }
 
 export class EditorEngine {
@@ -319,9 +332,18 @@ export class EditorEngine {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, W, H);
 
-    // main track
+    // main track — با ترنزیشن واقعیِ چسبیده به نقطهٔ تدوین (P0 §7)
     const act = activeClipAt(p, t);
-    if (act) this.drawClip(ctx, act.clip, act.local, t, W, H);
+    if (act) {
+      const trIn = act.index > 0 ? p.transitions.find((tr) => tr.rightClipId === act.clip.id) : undefined;
+      if (trIn && act.local < trIn.dur) {
+        const prev = p.clips[act.index - 1];
+        if (prev) this.drawBoundaryTransition(ctx, prev, act, trIn, t, W, H);
+        else this.drawClip(ctx, act.clip, act.local, t, W, H);
+      } else {
+        this.drawClip(ctx, act.clip, act.local, t, W, H);
+      }
+    }
 
     // overlays
     for (const ov of p.overlays) {
@@ -350,25 +372,166 @@ export class EditorEngine {
     ctx.restore();
   }
 
-  private transitionState(clip: Clip, local: number): { alpha: number; dx: number; scale: number; black: number } {
-    const tr = clip.transitionIn;
-    const st = { alpha: 1, dx: 0, scale: 1, black: 0 };
-    if (!tr || tr.type === "none" || local >= tr.dur) return st;
-    const p = Math.max(0.0001, Math.min(1, local / Math.max(0.05, tr.dur)));
-    const e = 1 - Math.pow(1 - p, 3);
-    if (tr.type === "fade") st.alpha = e;
-    else if (tr.type === "black") st.black = 1 - e;
-    else if (tr.type === "slide") st.dx = -(1 - e);
-    else if (tr.type === "zoom") {
-      st.alpha = e;
-      st.scale = 0.55 + 0.45 * e;
-    }
-    return st;
+  // ── ترنزیشن واقعی روی نقطهٔ تدوین (P0 §7-§12) ──
+  // زیرِ افکت، آخرین فریمِ کلیپ قبلی (دم یخ‌زده) کشیده می‌شود تا دیسالو واقعاً «متقاطع» باشد
+  // و نه محو از سیاهی. بعد کلّیپ ورودی با افکتِ خانواده‌اش روی آن می‌نشیند.
+
+  private trEase(id: TransitionEasing | undefined, q: number): number {
+    const x = Math.max(0, Math.min(1, q));
+    if (id === "linear") return x;
+    if (id === "snap") return 1 - Math.pow(1 - x, 4); // ضربه‌ای: سریع شروع، آرام نشست
+    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; // نرم
   }
 
-  private drawClip(ctx: CanvasRenderingContext2D, clip: Clip, local: number, t: number, W: number, H: number) {
+  private static dirVec(d: TransitionDirection | undefined): { x: number; y: number } {
+    switch (d) {
+      case "right": return { x: 1, y: 0 };
+      case "up": return { x: 0, y: -1 };
+      case "down": return { x: 0, y: 1 };
+      default: return { x: -1, y: 0 };
+    }
+  }
+
+  /** حالت افکت ورودیِ کلیپ — drawClip آن را قبل از رسم اعمال می‌کند */
+
+  /**
+   * ترنزیشن بین کلیپ قبلی (از بالای مرز، دمِ یخ‌زده) و کلیپ فعال (act).
+   * هر خانواده نتیجهٔ بصری واقعاً متمایز دارد (§11)؛ اگر افکتی پیاده نشده باشد در کاتالوگ نیست.
+   */
+  private drawBoundaryTransition(
+    ctx: CanvasRenderingContext2D,
+    prev: Clip,
+    act: { clip: Clip; local: number },
+    tr: TimelineTransition,
+    t: number,
+    W: number,
+    H: number
+  ) {
+    const d = Math.max(0.05, tr.dur);
+    const q = Math.max(0, Math.min(1, act.local / d));
+    const e = this.trEase(tr.easing, q);
+    const inten = Math.max(0.1, Math.min(1, tr.intensity ?? 1));
+    const dv = EditorEngine.dirVec(tr.direction);
+    const prevLocal = Math.max(0, clipDur(prev) - 0.001);
+    const incoming = (fx: FxState) => this.drawClip(ctx, act.clip, act.local, t, W, H, fx);
+
+    switch (tr.type) {
+      case "fade":
+        incoming({ alphaMul: e });
+        break;
+
+      case "dipBlack":
+      case "dipWhite": {
+        incoming({ alphaMul: Math.max(0, e * 2 - 1) });
+        ctx.save();
+        ctx.filter = "none";
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = tr.type === "dipBlack" ? `rgba(0,0,0,${Math.sin(Math.PI * q)})` : `rgba(255,255,255,${Math.sin(Math.PI * q)})`;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+        break;
+      }
+
+      case "slide":
+        // ورود از جهت — کلیپ قبلی ثابت می‌ماند
+        incoming({ dxMul: dv.x * (1 - e), dyMul: dv.y * (1 - e) });
+        break;
+
+      case "push": {
+        // هر دو حرکت می‌کنند: قبلی بیرون، جدید از همان سمت داخل
+        this.drawClip(ctx, prev, prevLocal, t, W, H, { dxMul: -dv.x * e, dyMul: -dv.y * e });
+        incoming({ dxMul: dv.x * (1 - e), dyMul: dv.y * (1 - e) });
+        break;
+      }
+
+      case "zoom":
+        incoming({ alphaMul: e, scaleMul: 1 - (1 - e) * 0.45 * inten });
+        break;
+
+      case "blur":
+        incoming({ alphaMul: Math.min(1, e * 1.15), blurAdd: (1 - e) * 14 * inten });
+        break;
+
+      case "wipe": {
+        ctx.save();
+        ctx.beginPath();
+        if (tr.direction === "right") ctx.rect(W * (1 - e), 0, W * e + 1, H);
+        else if (tr.direction === "up") ctx.rect(0, H * (1 - e), W, H * e + 1);
+        else if (tr.direction === "down") ctx.rect(0, 0, W, H * e + 1);
+        else ctx.rect(0, 0, W * e + 1, H);
+        ctx.clip();
+        incoming({});
+        ctx.restore();
+        break;
+      }
+
+      case "flash": {
+        // برش سخت در میانه + برق سفید روی آن
+        if (q >= 0.5) incoming({});
+        ctx.save();
+        ctx.filter = "none";
+        ctx.globalAlpha = Math.pow(Math.sin(Math.PI * q), 1.3) * inten;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+        break;
+      }
+
+      case "spin": {
+        const s = dv.x !== 0 ? dv.x : dv.y;
+        incoming({
+          alphaMul: Math.min(1, e * 1.8),
+          scaleMul: 0.35 + 0.65 * e,
+          rotAdd: (1 - e) * 100 * s,
+        });
+        break;
+      }
+
+      case "glitch": {
+        // بریدگی اسلایسی قطعی (بدون Math.random تا پیش‌نمایش/خروجی یکسان بمانند)
+        const slices = 6;
+        const phase = Math.floor(q * 12);
+        const sh = H / slices;
+        for (let i = 0; i < slices; i++) {
+          if (q < (i / slices) * 0.65) continue; // اسلایس‌ها پلکانی ظاهر می‌شوند
+          const jitter = Math.sin(i * 12.9898 + phase * 78.233) * 0.5;
+          const off = jitter * W * 0.12 * (1 - e);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, i * sh, W, sh + 1);
+          ctx.clip();
+          incoming({ dxMul: off / W, alphaMul: q > 0.85 ? 1 : 0.85 + 0.15 * e });
+          ctx.restore();
+        }
+        if (q > 0.85) incoming({});
+        break;
+      }
+
+      case "lightLeak": {
+        incoming({ alphaMul: e });
+        const x = (q * 1.6 - 0.3) * W;
+        const base =
+          tr.tint === "cool" ? "170,205,255" : tr.tint === "warm" ? "255,185,125" : "255,214,150"; // gold پیش‌فرض
+        const g = ctx.createLinearGradient(x - W * 0.38, H * 0.1, x + W * 0.38, H * 0.35);
+        g.addColorStop(0, `rgba(${base},0)`);
+        g.addColorStop(0.5, `rgba(${base},0.9)`);
+        g.addColorStop(1, `rgba(${base},0)`);
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = Math.sin(Math.PI * q) * inten;
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+        break;
+      }
+
+      default:
+        incoming({});
+    }
+  }
+
+  private drawClip(ctx: CanvasRenderingContext2D, clip: Clip, local: number, t: number, W: number, H: number, fx: FxState = {}) {
     const dur = clipDur(clip);
-    const tr = this.transitionState(clip, local);
     const scale = W / 1080;
     // ترنسفورم مؤثر: اگر keyframe برای پراپرتی‌ای هست، مقدار همان لحظه جایگزین می‌شود
     const ktf = clip.kf
@@ -382,14 +545,13 @@ export class EditorEngine {
         }
       : clip.transform;
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, ktf.opacity * tr.alpha));
+    ctx.globalAlpha = Math.max(0, Math.min(1, ktf.opacity * (fx.alphaMul ?? 1)));
 
-    if (clip.transitionIn.type === "slide") {
-      ctx.translate(tr.dx * W, 0);
-    } else {
-      ctx.translate(0, 0);
-    }
-    ctx.scale(tr.scale, tr.scale);
+    // افکت ترنزیشنِ مرزِ قبلی (اگر از drawBoundaryTransition آمده باشد)
+    ctx.translate((fx.dxMul ?? 0) * W, (fx.dyMul ?? 0) * H);
+    if (fx.rotAdd) ctx.rotate((fx.rotAdd * Math.PI) / 180);
+    const fsm = fx.scaleMul ?? 1;
+    ctx.scale(fsm, fsm);
 
     let source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement | null = null;
     let srcW = clip.srcW;
@@ -454,7 +616,7 @@ export class EditorEngine {
       }
 
       const base = Math.max(W / srcW, H / srcH) * stabZoom; // cover (+ stabilization margin)
-      ctx.filter = cssFilter(enhancedFilter(clip.filter, !!clip.enhance), scale);
+      ctx.filter = cssFilter(enhancedFilter({ ...clip.filter, blur: clip.filter.blur + (fx.blurAdd ?? 0) }, !!clip.enhance), scale);
 
       let drawSource: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement = source;
       if (clip.chroma.enabled && !clip.reverse) {
@@ -513,11 +675,6 @@ export class EditorEngine {
       drawVignette(ctx, clip.filter.vignette, W, H);
     }
 
-    if (tr.black > 0) {
-      ctx.filter = "none";
-      ctx.fillStyle = `rgba(0,0,0,${tr.black})`;
-      ctx.fillRect(-W, -H, W * 3, H * 3);
-    }
     ctx.restore();
     void t;
     void dur;

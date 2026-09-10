@@ -252,7 +252,6 @@ export function AiClipperSheet({ ctx }: { ctx: EditorCtx }) {
           id: uid("cl"),
           in: bounds[i],
           out: bounds[i + 1],
-          transitionIn: i === 0 ? orig.transitionIn : { type: "none", dur: 0.2 },
           name: `${orig.name} ${i + 1}`,
         });
       }
@@ -374,7 +373,6 @@ export function ExtendSheet({ ctx }: { ctx: EditorCtx }) {
           id: uid("cl"),
           name: `${lastClip.name} برگشت`,
           reverse: { frames, fps },
-          transitionIn: { type: "fade", dur: 0.3 },
         });
       });
       ctx.toast("ادامه‌ی پینگ‌پنگ اضافه شد ↔️", "success");

@@ -9,7 +9,8 @@ import { z } from "zod";
 const CLIP_ID = z.string().min(1).describe("شناسهٔ کلیپ مثل clip_01");
 const TIME = z.number().min(0).max(3600);
 
-export const TRANSITION_TYPES = ["none", "fade", "black", "slide", "zoom"] as const;
+export const TRANSITION_TYPES = ["fade", "dipBlack", "dipWhite", "slide", "push", "zoom", "blur", "wipe", "flash", "spin", "glitch", "lightLeak"] as const;
+export const TRANSITION_DIRECTIONS = ["left", "right", "up", "down"] as const;
 export const FILTER_IDS = ["none", "cinema", "warmglow", "noir", "faded", "neon", "clean", "mint"] as const;
 export const CAPTION_PRESETS = ["impact", "neon", "minimal", "classic", "lalezar"] as const;
 export const KF_PROPS = ["scale", "x", "y", "rotate", "opacity"] as const;
@@ -106,9 +107,29 @@ export const CommandParams: Record<string, z.ZodTypeAny> = {
   add_transition: z.object({
     tool: z.literal("add_transition"),
     type: z.enum(TRANSITION_TYPES),
-    dur: z.number().min(0.1).max(2).default(0.5),
+    /** ثانیه — با طول دو کلیپ همسایه محدود می‌شود */
+    dur: z.number().min(0.1).max(1.5).default(0.5),
+    /** برای slide/push/wipe/zoom/spin — سمتِ ورود */
+    direction: z.enum(TRANSITION_DIRECTIONS).optional(),
     target: z.enum(["all", "clip"]).default("all"),
+    /**
+     * با target="clip": ترنزیشن به «مرزِ ورودیِ این کلیپ» می‌چسبد
+     * (مرز بین کلیپ قبلی و این کلیپ) — نه به کل تایم‌لاین.
+     */
     clipId: CLIP_ID.optional(),
+  }),
+
+  set_transition_duration: z.object({
+    tool: z.literal("set_transition_duration"),
+    /** مرزِ ورودیِ این کلیپ */
+    clipId: CLIP_ID,
+    dur: z.number().min(0.1).max(1.5),
+  }),
+
+  remove_transition: z.object({
+    tool: z.literal("remove_transition"),
+    /** مرزِ ورودیِ این کلیپ حذف می‌شود — بقیهٔ مرزها دست‌نخورده */
+    clipId: CLIP_ID,
   }),
 
   set_fades: z.object({
@@ -203,7 +224,9 @@ export const COMMAND_CATALOG: CommandDescriptor[] = [
   { id: "replace_clip", fa: "تعویض منبع کلیپ", en: "replace a clip's media source with another asset of the same kind (needs snapshot.assets)" },
   { id: "to_overlay", fa: "بردن کلیپ به لایهٔ رویی", en: "move a main-track clip to the overlay track (PiP) at its current time" },
   { id: "to_main_track", fa: "آوردن لایه به ترک اصلی", en: "move an overlay layer back to the main track at its start time" },
-  { id: "add_transition", fa: "افزودن ترنزیشن", en: "add transition between clips" },
+  { id: "add_transition", fa: "افزودن ترنزیشن روی مرز", en: "attach a transition to the edit point (boundary) between two adjacent clips — with target=clip it attaches to that clip's incoming boundary only" },
+  { id: "set_transition_duration", fa: "تغییر مدت ترنزیشن مرز", en: "change duration of the transition attached to a clip's incoming boundary" },
+  { id: "remove_transition", fa: "حذف ترنزیشن مرز", en: "remove the transition attached to a clip's incoming boundary (other boundaries untouched)" },
   { id: "set_fades", fa: "فید ویدئویی", en: "video fade in/out" },
   { id: "set_volume", fa: "تغییر صدا", en: "set volume of clips or audio items" },
   { id: "duck_music", fa: "کم‌کردن موسیقی زیر گفتار", en: "lower music under speech (ducking)" },

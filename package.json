@@ -11,7 +11,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "test": "npx tsx scripts/test-core-engine.ts && npx tsx scripts/test-agent.ts && npx tsx scripts/test-ai-architecture.ts"
+    "test": "npx tsx scripts/test-core-engine.ts && npx tsx scripts/test-editor-regressions.ts && npx tsx scripts/test-agent.ts && npx tsx scripts/test-ai-architecture.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

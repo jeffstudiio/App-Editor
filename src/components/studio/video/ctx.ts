@@ -1,7 +1,13 @@
 // Shared editor context passed to all sheets/panels of VideoView
 import type { MediaAsset, Project, TextItem } from "@/lib/video/types";
 
-export type SelType = "clip" | "overlay" | "text" | "audio";
+export type SelType = "clip" | "overlay" | "text" | "audio" | "transition";
+
+/** برای شروع جریانِ «افزودن ترنزیشن» روی مرزی که هنوز ترنزیشنی ندارد */
+export interface BoundaryRef {
+  leftId: string;
+  rightId: string;
+}
 
 export interface Selection {
   type: SelType;

@@ -130,15 +130,129 @@ export const DEFAULT_CHROMA: ChromaState = {
   smoothness: 0.1,
 };
 
-export type TransitionType = "none" | "fade" | "black" | "slide" | "zoom";
+// ── ترنزیشن (P0 — مدل Edit-Point) ──
+// ترنزیشن دیگر پراپرتی «کل تایم‌لاین» یا «ورودی کلیپ» نیست؛
+// ویژگیِ «نقطهٔ تدوین» بین دو کلیپ مجاور است: Clip A | TRANSITION | Clip B
+// مرجع حقیقت: Project.transitions — هر ترنزیشن با leftClipId/rightClipId به مرز می‌چسبد.
 
-export const TRANSITIONS: { id: TransitionType; name: string; emoji: string }[] = [
-  { id: "none", name: "بدون", emoji: "—" },
-  { id: "fade", name: "محو", emoji: "🌗" },
-  { id: "black", name: "از سیاهی", emoji: "⚫️" },
-  { id: "slide", name: "سواید", emoji: "➡️" },
-  { id: "zoom", name: "زوم", emoji: "🔍" },
+export type TransitionType =
+  | "fade" // دیسالو متقاطع (Cross Dissolve)
+  | "dipBlack" // رفتن از سیاهی
+  | "dipWhite" // رفتن از سفیدی
+  | "slide" // سواید (ورود از کنار)
+  | "push" // پوش (کلیپ قبلی را بیرون می‌راند)
+  | "zoom" // زوم
+  | "blur" // از تاری
+  | "wipe" // مهر و پاک‌کن (لبهٔ خطی)
+  | "flash" // فلاش سفید
+  | "spin" // چرخش ورود
+  | "glitch" // گلیچ اسلایسی
+  | "lightLeak"; // نشت نور گرم
+
+export type TransitionDirection = "left" | "right" | "up" | "down";
+export type TransitionEasing = "linear" | "smooth" | "snap";
+
+/** ترنزیشن واقعی چسبیده به یک مرز بین دو کلیپ مجاور */
+export interface TimelineTransition {
+  id: string;
+  leftClipId: string;
+  rightClipId: string;
+  type: TransitionType;
+  /** ثانیه — با طول کلیپ‌های همسایه محدود می‌شود (maxBoundaryDur) */
+  dur: number;
+  /** برای slide/push/wipe/zoom/spin */
+  direction?: TransitionDirection;
+  easing?: TransitionEasing;
+  /** شدت افکت ۰..۱ (blur/flash/lightLeak/glitch/zoom) */
+  intensity?: number;
+  /** رنگ نور برای lightLeak */
+  tint?: "warm" | "gold" | "cool";
+  /** id کارتِ مرورگر (برای هایلایت انتخاب؛ خانواده‌های بیوتی presetِ پارامتری هستند) */
+  preset?: string;
+}
+
+export interface TransitionCard {
+  /** id کارت در مرورگر — برای خانواده‌های بیوتی با type یکی نیست */
+  id: string;
+  name: string;
+  cat: "basic" | "motion" | "stylish" | "beauty";
+  type: TransitionType;
+  dur: number;
+  dir: boolean;
+  desc: string;
+  patch?: Partial<Pick<TimelineTransition, "intensity" | "tint" | "easing">>;
+}
+
+/** ۱۷ کارت واقعی روی ۱۲ موتور مستقل — هر کارت نتیجهٔ بصری متمایز دارد (§11) */
+export const TRANSITION_CARDS: TransitionCard[] = [
+  { id: "fade", name: "دیسالو", cat: "basic", type: "fade", dur: 0.5, dir: false, desc: "محو متقاطع روی نمای قبلی" },
+  { id: "dipBlack", name: "از سیاهی", cat: "basic", type: "dipBlack", dur: 0.6, dir: false, desc: "عبور از مشکی" },
+  { id: "dipWhite", name: "از سفیدی", cat: "basic", type: "dipWhite", dur: 0.6, dir: false, desc: "عبور از سفید" },
+  { id: "slide", name: "سواید", cat: "motion", type: "slide", dur: 0.45, dir: true, desc: "ورود کشویی از کنار" },
+  { id: "push", name: "پوش", cat: "motion", type: "push", dur: 0.45, dir: true, desc: "قبلی را بیرون می‌راند" },
+  { id: "zoom", name: "زوم", cat: "motion", type: "zoom", dur: 0.45, dir: false, desc: "بزرگ‌نمایی ورود" },
+  { id: "blur", name: "از تاری", cat: "motion", type: "blur", dur: 0.5, dir: false, desc: "فوکوس شدن از بلور" },
+  { id: "wipe", name: "وایپ", cat: "motion", type: "wipe", dur: 0.45, dir: true, desc: "پاک‌شدن لبه‌ای" },
+  { id: "flash", name: "فلاش", cat: "stylish", type: "flash", dur: 0.35, dir: false, desc: "برق سفید کوتاه" },
+  { id: "spin", name: "اسپین", cat: "stylish", type: "spin", dur: 0.45, dir: true, desc: "چرخش ورود" },
+  { id: "glitch", name: "گلیچ", cat: "stylish", type: "glitch", dur: 0.4, dir: false, desc: "بریدگی دیجیتال" },
+  { id: "lightLeak", name: "نشت نور", cat: "stylish", type: "lightLeak", dur: 0.7, dir: false, desc: "موج نور گرم" },
+  { id: "softReveal", name: "شیک و نرم", cat: "beauty", type: "blur", dur: 0.8, dir: false, desc: "آشکارسازی آرام و بلوری", patch: { intensity: 0.6, easing: "smooth" } },
+  { id: "elegantFade", name: "محو مجلل", cat: "beauty", type: "dipWhite", dur: 0.8, dir: false, desc: "عبور نرم از روشنایی", patch: { easing: "smooth" } },
+  { id: "glow", name: "درخشش", cat: "beauty", type: "lightLeak", dur: 0.9, dir: false, desc: "هالهٔ نور ملایم", patch: { intensity: 0.55, tint: "gold", easing: "smooth" } },
+  { id: "luxuryLight", name: "نور لوکس", cat: "beauty", type: "lightLeak", dur: 1, dir: false, desc: "طلایی لوکس پرقدرت", patch: { intensity: 1, tint: "gold" } },
+  { id: "warmGlow", name: "گرمای پوست", cat: "beauty", type: "lightLeak", dur: 0.7, dir: false, desc: "نور گرم لطیف", patch: { intensity: 0.7, tint: "warm" } },
 ];
+
+export const TRANSITION_TYPES = TRANSITION_CARDS.filter((c) => c.cat !== "beauty").map((c) => c.type);
+
+export const TRANSITION_EASINGS: { id: TransitionEasing; name: string }[] = [
+  { id: "linear", name: "خطی" },
+  { id: "smooth", name: "نرم" },
+  { id: "snap", name: "ضربه‌ای" },
+];
+
+export const TRANSITION_DUR_PRESETS = [0.1, 0.2, 0.3, 0.5, 0.7, 1];
+
+/** سقف مجاز مدت ترنزیشن بین دو کلیپ — تا نصفِ هر کلیپ همسایه و حداکثر ۱.۵s */
+export function maxBoundaryDur(durLeft: number, durRight: number): number {
+  return Math.max(0.1, Math.min(1.5, durLeft * 0.5, durRight * 0.5));
+}
+
+/** ترنزیشن امن و clamp شده (ورودی UI/agent/JSON) */
+export function sanitizeTransition(
+  raw: unknown,
+  durLeft: number,
+  durRight: number,
+  idOf: () => string
+): TimelineTransition | null {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const type = TRANSITION_TYPES.includes(r.type as TransitionType) ? (r.type as TransitionType) : null;
+  if (!type) return null;
+  const card = TRANSITION_CARDS.find((c) => c.type === type);
+  const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  const dir = ["left", "right", "up", "down"].includes(r.direction as string)
+    ? (r.direction as TransitionDirection)
+    : card?.dir
+      ? "left"
+      : undefined;
+  const easing = ["linear", "smooth", "snap"].includes(r.easing as string)
+    ? (r.easing as TransitionEasing)
+    : "smooth";
+  const tint = ["warm", "gold", "cool"].includes(r.tint as string) ? (r.tint as "warm" | "gold" | "cool") : undefined;
+  return {
+    id: typeof r.id === "string" && r.id ? r.id : idOf(),
+    leftClipId: String(r.leftClipId ?? ""),
+    rightClipId: String(r.rightClipId ?? ""),
+    type,
+    dur: Math.min(maxBoundaryDur(durLeft, durRight), Math.max(0.1, num(r.dur, card?.dur ?? 0.5))),
+    direction: dir,
+    easing,
+    intensity: Math.min(1, Math.max(0.1, num(r.intensity, 1))),
+    tint,
+    preset: typeof r.preset === "string" ? r.preset : undefined,
+  };
+}
 
 // ── mask (like desktop CapCut's Mask tab) ──
 export type MaskShape = "none" | "circle" | "rounded" | "star" | "heart";
@@ -216,7 +330,6 @@ export interface Clip {
   muted: boolean;
   fadeIn: number; // seconds
   fadeOut: number;
-  transitionIn: { type: TransitionType; dur: number };
   srcDur: number;
   srcW: number;
   srcH: number;
@@ -329,6 +442,8 @@ export interface Project {
   schemaVersion?: number;
   aspect: AspectId;
   clips: Clip[];
+  /** ترنزیشن‌های چسبیده به نقاط تدوین بین کلیپ‌های مجاور (مدل Edit-Point — مرجع حقیقت) */
+  transitions: TimelineTransition[];
   overlays: OverlayItem[];
   texts: TextItem[];
   audios: AudioItem[];
@@ -336,7 +451,7 @@ export interface Project {
 }
 
 export function emptyProject(aspect: AspectId = "9:16"): Project {
-  return { schemaVersion: 2, aspect, clips: [], overlays: [], texts: [], audios: [], markers: [] };
+  return { schemaVersion: 3, aspect, clips: [], transitions: [], overlays: [], texts: [], audios: [], markers: [] };
 }
 
 /** مایگریشن/نرمال‌سازی هر Project خام (نسخه‌های قدیمی، JSON ناقص) به مدل فعلی */
@@ -367,10 +482,6 @@ export function normalizeProject(raw: unknown): Project {
       muted: Boolean(c.muted),
       fadeIn: num(c.fadeIn, 0),
       fadeOut: num(c.fadeOut, 0),
-      transitionIn:
-        c.transitionIn && typeof c.transitionIn === "object"
-          ? (c.transitionIn as Clip["transitionIn"])
-          : { type: "none" as TransitionType, dur: 0.4 },
       srcDur: num(c.srcDur, 10),
       srcW: num(c.srcW, 1080),
       srcH: num(c.srcH, 1920),
@@ -471,8 +582,65 @@ export function normalizeProject(raw: unknown): Project {
     return { id: String(m.id ?? uid("mk")), t: Math.max(0, num(m.t, 0)), label: String(m.label ?? "") };
   });
 
+  // ── ترنزیشن‌ها: مدل جدید (آرایهٔ مرزها) یا مایگریشن از transitionIn قدیمی کلیپ‌ها ──
+  const clipDurOf = (c: Clip): number =>
+    c.reverse ? c.reverse.frames.length / c.reverse.fps : Math.max(0.1, (c.out - c.in) / (c.kind === "image" ? 1 : c.speed));
+  let transitions: TimelineTransition[] = [];
+  if (Array.isArray(r.transitions)) {
+    transitions = arr(r.transitions)
+      .map((t0) => {
+        const t = t0 as Record<string, unknown>;
+        const li = clips.findIndex((c) => c.id === t.leftClipId);
+        const ri = clips.findIndex((c) => c.id === t.rightClipId);
+        if (li < 0 || ri !== li + 1) return null; // فقط مرزهای معتبرِ مجاور
+        return sanitizeTransition(t, clipDurOf(clips[li]), clipDurOf(clips[ri]), () => uid("tr"));
+      })
+      .filter((x): x is TimelineTransition => !!x);
+  } else {
+    // مایگریشن نسخهٔ ≤2: transitionIn هر کلیپ = ترنزیشن مرزِ (کلیپ قبلی | این کلیپ)
+    const LEGACY_TYPE_MAP: Record<string, string> = { black: "dipBlack", white: "dipWhite", none: "none" };
+    for (let i = 1; i < clips.length; i++) {
+      const legacy = (arr(r.clips)[i] as Record<string, unknown> | undefined)?.transitionIn as
+        | { type?: unknown; dur?: unknown }
+        | undefined;
+      const rawType = legacy && typeof legacy.type === "string" ? legacy.type : "none";
+      const type = (LEGACY_TYPE_MAP[rawType] ?? rawType) as string;
+      if (type === "none" || !TRANSITION_TYPES.includes(type as TransitionType)) continue;
+      const t = sanitizeTransition(
+        { type, dur: (legacy as { dur?: unknown })?.dur, leftClipId: clips[i - 1].id, rightClipId: clips[i].id },
+        clipDurOf(clips[i - 1]),
+        clipDurOf(clips[i]),
+        () => uid("tr")
+      );
+      if (t) transitions.push(t);
+    }
+  }
+
   const aspect = (ASPECTS.some((a) => a.id === r.aspect) ? r.aspect : "9:16") as AspectId;
-  return { schemaVersion: 2, aspect, clips, overlays, texts, audios, markers };
+  return { schemaVersion: 3, aspect, clips, transitions, overlays, texts, audios, markers };
+}
+
+/** ترنزیشن چسبیده به مرز بین دو کلیپ (اگر مجاور باشند) */
+export function getBoundaryTransition(p: Project, leftId: string, rightId: string): TimelineTransition | undefined {
+  return p.transitions.find((t) => t.leftClipId === leftId && t.rightClipId === rightId);
+}
+
+/**
+ * انطباق اجباریِ ثابت‌ها: هر ترنزیشن باید به مرزِ دو کلیپِ «مجاور» بچسبد و
+ * مدتش داخل سقف همسایه‌ها باشد. بعد از هر عملیاتِ تغییردهندهٔ ترتیب/حذف صدا زده می‌شود
+ * تا هیچ‌وقت ترنزیشن یتیم یا وابسته به کل تایم‌لاین نداشته باشیم (§35).
+ */
+export function cleanupTransitions(p: Project): void {
+  if (!p.transitions.length) return;
+  const kept: TimelineTransition[] = [];
+  for (const t of p.transitions) {
+    const li = p.clips.findIndex((c) => c.id === t.leftClipId);
+    const ri = p.clips.findIndex((c) => c.id === t.rightClipId);
+    if (li < 0 || ri !== li + 1) continue; // دیگر مجاور نیستند → مرز وجود ندارد
+    const max = maxBoundaryDur(clipDur(p.clips[li]), clipDur(p.clips[ri]));
+    kept.push({ ...t, dur: Math.min(t.dur, max) });
+  }
+  p.transitions = kept;
 }
 
 export function clipDur(c: Clip): number {

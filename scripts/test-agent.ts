@@ -37,7 +37,6 @@ function makeVideoClip(id: string, inS: number, outS: number, speed = 1): Clip {
     filter: { presetId: "none", brightness: 0, contrast: 0, saturate: 0, hue: 0, blur: 0, sepia: 0, temp: 0, vignette: 0 },
     chroma: { enabled: false, color: "#00b140", similarity: 0.4, smoothness: 0.1 },
     volume: 1, muted: false, fadeIn: 0, fadeOut: 0,
-    transitionIn: { type: "none", dur: 0 },
     srcDur: outS + 10, srcW: 1080, srcH: 1920,
   };
 }
@@ -107,7 +106,14 @@ function sampleProject(): Project {
   eq("speed set", p.clips[0].speed, 2);
 
   r = applySyncCommand(p, { tool: "add_transition", type: "fade", dur: 0.5 });
-  ok("transition all", p.clips.every((c) => c.transitionIn.type === "fade"));
+  ok("transition all boundaries", p.transitions.length === p.clips.length - 1 && p.transitions.every((t) => t.type === "fade"));
+  // مرز مستقل: حذف مرز اول نباید بقیه را خراب کند
+  const trCountBefore = p.transitions.length;
+  r = applySyncCommand(p, { tool: "remove_transition", clipId: p.clips[1].id });
+  ok("remove_transition only that boundary", p.transitions.length === trCountBefore - 1);
+  // سقف §12: مدت به نصف کلیپ همسایه محدود می‌شود (همسایه‌ها اینجا ۱ ثانیه‌ای‌اند → سقف ۰.۵)
+  r = applySyncCommand(p, { tool: "set_transition_duration", clipId: p.clips[2].id, dur: 0.9 });
+  ok("set_transition_duration clamped to neighbor half", p.transitions.find((t) => t.rightClipId === p.clips[2].id)?.dur === 0.5);
 
   r = applySyncCommand(p, { tool: "apply_filter", preset: "warmglow" });
   eq("filter preset applied", p.clips[0].filter.presetId, "warmglow");

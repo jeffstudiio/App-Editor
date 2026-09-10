@@ -9,20 +9,25 @@ import {
   Layers, Crop, Settings2, Wand2, AudioWaveform, Vibrate, LayoutTemplate,
   Smile, AudioLines, Frame, TrendingUp, SkipForward, Save, WandSparkles, Diamond,
   ClipboardCopy, ClipboardPaste, Unplug, Bot, BringToFront, SendToBack, ChevronsUp, ChevronsDown, PictureInPicture2,
+  ZoomIn, ZoomOut, X, MoveHorizontal, SlidersHorizontal, Timer,
 } from "lucide-react";
 import {
   EditorEngine, analyzeStabilization, buildReverse,
 } from "@/lib/video/engine";
 import {
   ASPECTS, DEFAULT_CHROMA, DEFAULT_FILTER, DEFAULT_TRANSFORM,
-  clipDur, clipStart, emptyProject, totalDur, uid, normalizeProject,
+  TRANSITION_CARDS,
+  clipDur, clipStart, emptyProject, getBoundaryTransition, maxBoundaryDur, totalDur, uid, normalizeProject,
   type AspectId, type AudioItem, type Clip, type MediaAsset, type OverlayItem, type Project, type TextItem,
+  type TransitionDirection,
 } from "@/lib/video/types";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import type { BusyState, EditorCtx, Selection } from "./ctx";
+import type { BusyState, BoundaryRef, EditorCtx, Selection } from "./ctx";
 import { fmtTime } from "./ctx";
-import { ClipBasicSheet, ClipLookSheet, ClipMotionSheet, TransitionSheet, ChromaSheet, AspectSheet, CropSheet } from "./ClipSheets";
+import { ClipBasicSheet, ClipLookSheet, ClipMotionSheet, ChromaSheet, AspectSheet, CropSheet } from "./ClipSheets";
+import { TransitionBrowser } from "./TransitionBrowser";
+import { PresetsBrowser } from "./PresetsBrowser";
+import { EffectsBrowser } from "./EffectsBrowser";
 import { MediaSheet, TextSheet, AudioSheet } from "./MediaSheets";
 import { CaptionSheet, AiEditSheet, AutoVideoSheet, ExportSheet, MarkersSheet } from "./AiSheets";
 import { AgentSheet } from "./AgentSheet";
@@ -58,9 +63,15 @@ import {
   trimOverlayRight,
   trimTextLeft,
   trimTextRight,
+  cleanupTransitions,
+  dropTransitionsTouching,
+  removeBoundaryTransition,
+  setBoundaryTransition,
+  splitClipAt,
+  type SplittableClip,
 } from "@/lib/video/edit-ops";
 
-const PX = 46; // timeline pixels per second
+const DEFAULT_PXS = 46; // پیش‌فرض پیکسل بر ثانیه — با زوم تغییر می‌کند (§14)
 
 const PREVIEW_RES: Record<AspectId, [number, number]> = {
   "9:16": [540, 960],
@@ -75,7 +86,9 @@ const SHEET_TITLES: Record<string, string> = {
   "clip-basic": "تنظیمات کلیپ",
   "clip-look": "فیلتر و رنگ",
   "clip-motion": "چرخش و کادر",
-  transition: "ترنزیشن ورودی",
+  transition: "ترنزیشن نقطهٔ تدوین",
+  presets: "پریست‌ها",
+  effects: "افکت‌ها",
   chroma: "پرده سبز (کروما)",
   text: "متن و تیتر",
   audio: "موزیک و گوینده",
@@ -126,6 +139,21 @@ export function VideoView() {
   const [projectName, setProjectName] = useState("");
   const [saving, setSaving] = useState(false);
   const [clipHasContent, setClipHasContent] = useState(false);
+
+  // ── P0: انتخاب مرز/ترنزیشن + زوم تایم‌لاین + چیدمان ریسپانسیو ──
+  const [pxs, setPxs] = useState(DEFAULT_PXS);
+  const pxsRef = useRef(pxs);
+  pxsRef.current = pxs;
+  const [boundary, setBoundary] = useState<BoundaryRef | null>(null);
+  const [pulseBoundary, setPulseBoundary] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    const on = () => setIsDesktop(mql.matches);
+    mql.addEventListener("change", on);
+    on();
+    return () => mql.removeEventListener("change", on);
+  }, []);
 
   // engine lifecycle
   useEffect(() => {
@@ -210,6 +238,8 @@ export function VideoView() {
   }, []);
 
   // ── mutation + history ──
+  // ثابتِ معماری (§35): بعد از هر تغییر، ترنزیشن‌ها به مرزهای «مجاور» برمی‌گردند
+  // و مدتشان داخل سقف همسایه‌ها clamp می‌شود — هیچ مسیری نمی‌تواند مدل را خراب کند.
   const mutate = useCallback((fn: (p: Project) => void) => {
     setProject((prev) => {
       pastRef.current.push(JSON.stringify(prev));
@@ -217,6 +247,7 @@ export function VideoView() {
       futureRef.current = [];
       const next = JSON.parse(JSON.stringify(prev)) as Project;
       fn(next);
+      cleanupTransitions(next);
       return next;
     });
     setUndoTick((t) => t + 1);
@@ -408,7 +439,6 @@ export function VideoView() {
       muted: !isVideo,
       fadeIn: 0,
       fadeOut: 0,
-      transitionIn: { type: "none", dur: 0.4 },
       srcDur: isVideo ? a.duration || 10 : 4,
       srcW: a.width || 1080,
       srcH: a.height || 1920,
@@ -511,6 +541,69 @@ export function VideoView() {
   const selectedOverlay = selection?.type === "overlay" ? project.overlays.find((o) => o.id === selection.id) ?? null : null;
   const selectedText = selection?.type === "text" ? project.texts.find((t) => t.id === selection.id) ?? null : null;
   const selectedAudio = selection?.type === "audio" ? project.audios.find((a) => a.id === selection.id) ?? null : null;
+  const selectedTransition = selection?.type === "transition" ? project.transitions.find((t) => t.id === selection.id) ?? null : null;
+
+  // مرزِ مربوط به ترنزیشن انتخاب‌شده — برای مرورگر ترنزیشن
+  const selectedTransitionBoundary: BoundaryRef | null = selectedTransition
+    ? { leftId: selectedTransition.leftClipId, rightId: selectedTransition.rightClipId }
+    : null;
+
+  /** مرزِ پیش‌فرضِ ابزار ترنزیشن برای یک کلیپ: اول مرز ورودی، وگرنه مرز خروجی */
+  const boundaryForClip = useCallback(
+    (clipId: string): BoundaryRef | null => {
+      const i = project.clips.findIndex((c) => c.id === clipId);
+      if (i < 0) return null;
+      if (i > 0) return { leftId: project.clips[i - 1].id, rightId: project.clips[i].id };
+      if (i < project.clips.length - 1) return { leftId: project.clips[i].id, rightId: project.clips[i + 1].id };
+      return null;
+    },
+    [project]
+  );
+
+  /** انتخاب یک نقطهٔ تدوین: اگر ترنزیشن دارد انتخابش کن، وگرنه مرورگر ترنزیشن را باز کن (§9) */
+  const openBoundary = useCallback(
+    (b: BoundaryRef) => {
+      const tr = getBoundaryTransition(project, b.leftId, b.rightId);
+      if (tr) {
+        setSelection({ type: "transition", id: tr.id });
+        setBoundary(b);
+        const idx = project.clips.findIndex((c) => c.id === b.rightId);
+        let st = 0;
+        for (let k = 0; k < idx; k++) st += clipDur(project.clips[k]);
+        seek(st + tr.dur * 0.5); // وسطِ ترنزیشن دیده شود
+      } else {
+        setSelection(null);
+        setBoundary(b);
+        setSheet("transition");
+      }
+    },
+    [project, seek]
+  );
+
+  const removeSelectedTransition = useCallback(() => {
+    if (!selectedTransition) return;
+    const b = { leftId: selectedTransition.leftClipId, rightId: selectedTransition.rightClipId };
+    mutate((p) => {
+      removeBoundaryTransition(p, b.leftId, b.rightId);
+    });
+    setSelection(null);
+    toast.success("ترنزیشن این مرز حذف شد — بقیهٔ مرزها دست‌نخورده");
+  }, [mutate, selectedTransition]);
+
+  const cycleSelectedTransitionDir = useCallback(() => {
+    if (!selectedTransition) return;
+    const order: TransitionDirection[] = ["left", "right", "up", "down"];
+    const cur = selectedTransition.direction ?? "left";
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    mutate((p) => {
+      setBoundaryTransition(
+        p, selectedTransition.leftClipId, selectedTransition.rightClipId,
+        { type: selectedTransition.type, dur: selectedTransition.dur, direction: next },
+        () => uid("tr")
+      );
+    });
+    toast.info(`جهت: ${next === "left" ? "از چپ" : next === "right" ? "از راست" : next === "up" ? "از بالا" : "از پایین"}`);
+  }, [mutate, selectedTransition]);
 
   const splitSelected = useCallback(() => {
     if (!selectedClip) return toast.error("اول یک کلیپ را انتخاب کن");
@@ -520,15 +613,20 @@ export function VideoView() {
     if (local <= 0.12 || local >= clipDur(selectedClip) - 0.12)
       return toast.error("نشانگر باید داخل کلیپ انتخاب‌شده باشد");
     const srcSplit = selectedClip.in + local * selectedClip.speed;
+    const leftId = selectedClip.id;
+    const rightId = uid("cl");
     mutate((p) => {
-      const idx = p.clips.findIndex((c) => c.id === selectedClip.id);
+      const idx = p.clips.findIndex((c) => c.id === leftId);
       if (idx < 0) return;
-      const orig = p.clips[idx];
-      const a: Clip = { ...orig, out: srcSplit, transitionIn: { type: "none", dur: 0.3 } };
-      const b: Clip = { ...orig, id: uid("cl"), in: srcSplit, fadeIn: 0 };
-      p.clips.splice(idx, 1, a, b);
+      // برش واقعی (§6): منبع/تایمینگ/ترنسفورم/فیلتر/صدا حفظ؛ کی‌فریم‌ها با پیوستگی شکسته می‌شوند؛
+      // ترنزیشن مرزِ (قبلی | کلیپ) چون نیمهٔ چپ همان id را دارد، سرِ جایش می‌ماند و مرزِ تازه (A|B) تمیز است.
+      splitClipAt(p.clips as unknown as SplittableClip[], idx, srcSplit, () => rightId);
     });
-    toast.success("کلیپ برش خورد ✂️");
+    // کلیپ راست انتخاب می‌شود و پلی‌هد روی نقطهٔ تدوین تازه می‌ماند (رفتار CapCut)
+    setSelection({ type: "clip", id: rightId });
+    setPulseBoundary(`${leftId}|${rightId}`);
+    setTimeout(() => setPulseBoundary(null), 1600);
+    toast.success("برش زده شد ✂️ — نقطهٔ تدوین جدید را بزن تا ترنزیشن بگذاری");
   }, [mutate, project, selectedClip, time]);
 
   const freezeSelected = useCallback(async () => {
@@ -560,7 +658,6 @@ export function VideoView() {
           muted: true,
           fadeIn: 0,
           fadeOut: 0,
-          transitionIn: { type: "fade", dur: 0.25 },
           srcDur: 2.5,
           srcW: canvas.width,
           srcH: canvas.height,
@@ -655,6 +752,17 @@ export function VideoView() {
 
   const deleteSelected = useCallback(() => {
     if (!selection) return;
+    if (selection.type === "transition") {
+      const tr = project.transitions.find((t) => t.id === selection.id);
+      if (tr) {
+        mutate((p) => {
+          removeBoundaryTransition(p, tr.leftClipId, tr.rightClipId);
+        });
+        toast.success("ترنزیشن حذف شد");
+      }
+      setSelection(null);
+      return;
+    }
     mutate((p) => {
       if (selection.type === "clip") {
         const idx = p.clips.findIndex((c) => c.id === selection.id);
@@ -664,6 +772,7 @@ export function VideoView() {
           const removed = clipDur(p.clips[idx]);
           const removedStart = clipStart(p, selection.id);
           const removedEnd = removedStart + removed;
+          dropTransitionsTouching(p, selection.id); // ترنزیشن‌های مرزهای این کلیپ بی‌معنا می‌شوند
           p.clips = p.clips.filter((c) => c.id !== selection.id);
           // ripple واقعی: لایه‌هایی که بعد از کلیپِ حذف‌شده شروع می‌شوند، به‌اندازهٔ همان حفره جلو می‌آیند
           for (const o of p.overlays) if (o.start >= removedEnd - 1e-6) o.start = Math.max(0, o.start - removed);
@@ -681,8 +790,9 @@ export function VideoView() {
       if (selection.type === "overlay") p.overlays = p.overlays.filter((o) => o.id !== selection.id);
     });
     setSelection(null);
+    setBoundary(null);
     toast.success("حذف شد");
-  }, [mutate, selection]);
+  }, [mutate, project.transitions, selection]);
 
   const addMarker = useCallback(() => {
     mutate((p) => p.markers.push({ id: uid("mk"), t: time, label: "" }));
@@ -733,7 +843,7 @@ export function VideoView() {
           if (ov.start > acc + 0.25 && ov.start < acc + d - 0.25) {
             const c = p.clips[i];
             const srcSplit = c.in + (ov.start - acc) * c.speed;
-            const right: Clip = { ...structuredClone(c), id: uid("cl"), in: srcSplit, out: c.out, transitionIn: { type: "none", dur: 0 }, reverse: undefined };
+            const right: Clip = { ...structuredClone(c), id: uid("cl"), in: srcSplit, out: c.out, reverse: undefined };
             c.out = srcSplit;
             p.clips.splice(i + 1, 0, right);
             insertAt = i + 1;
@@ -767,7 +877,6 @@ export function VideoView() {
         muted: ov.kind !== "video",
         fadeIn: 0,
         fadeOut: 0,
-        transitionIn: { type: "none", dur: 0 },
         srcDur: ov.kind === "video" ? ov.srcDur : ov.dur,
         srcW: 1080,
         srcH: 1920,
@@ -797,6 +906,7 @@ export function VideoView() {
   // ── clipboard واقعی (IDB) — کپی/چسباندن حتی بین پروژه‌ها ──
   const copySelectedToClipboard = useCallback(async () => {
     if (!selection) return toast.error("اول یک آیتم را انتخاب کن");
+    if (selection.type === "transition") return toast.error("ترنزیشن قابل رونوشت نیست — از ابزار «تغییر نوع» استفاده کن");
     try {
       let item: unknown = null;
       let name = "";
@@ -1044,7 +1154,7 @@ export function VideoView() {
       suppressClick.current = false;
     }, 300);
     if (d.kind === "trim") {
-      const dt = d.dx / PX;
+      const dt = d.dx / pxsRef.current;
       const o = d.orig;
       // لایه‌ها به مرزهای همسایه اسنپ می‌شوند؛ تراک اصلی مغناطیسی است و اسنپ نمی‌خواهد
       const pts = d.target === "clip" ? [] : snapPoints(snapCtx(), timeRef.current, d.id);
@@ -1104,7 +1214,7 @@ export function VideoView() {
       mutate((p) => {
         const from = p.clips.findIndex((c) => c.id === d.id);
         if (from < 0) return;
-        const w = Math.max(30, clipDur(p.clips[from]) * PX);
+        const w = Math.max(30, clipDur(p.clips[from]) * pxsRef.current);
         let steps = Math.round(d.dx / w);
         if (steps === 0 && Math.abs(d.dx) > 18) steps = d.dx > 0 ? 1 : -1; // درگ کوتاه = یک جایگاه
         const to = Math.max(0, Math.min(p.clips.length - 1, from + steps));
@@ -1115,7 +1225,7 @@ export function VideoView() {
       return;
     }
     // لایه‌ها: جابه‌جایی زمانی با اسنپ مغناطیسی (پلی‌هد، صفر، مرز کلیپ‌ها و لایه‌ها)
-    let dt = d.dx / PX;
+    let dt = d.dx / pxsRef.current;
     const orig = (d as { origStart: number }).origStart;
     let next = Math.max(0, orig + dt);
     next = snapTime(next, snapPoints(snapCtx(), timeRef.current, d.id));
@@ -1298,7 +1408,7 @@ export function VideoView() {
   useEffect(() => {
     if (!playing || !tlRef.current) return;
     const el = tlRef.current;
-    const x = time * PX;
+    const x = time * pxs;
     if (x < el.scrollLeft + 40 || x > el.scrollLeft + el.clientWidth - 80) {
       el.scrollTo({ left: Math.max(0, x - el.clientWidth * 0.35), behavior: "smooth" });
     }
@@ -1311,28 +1421,62 @@ export function VideoView() {
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const x = clientX - rect.left + el.scrollLeft;
-      seek(Math.max(0, Math.min(totalDur(project), x / PX)));
+      seek(Math.max(0, Math.min(totalDur(project), x / pxsRef.current)));
     },
     [project, seek]
   );
 
   const tapInfo = useRef<{ t: number; x: number } | null>(null);
 
+  // pinch-zoom (§14): دو انگشت روی تایم‌لاین = تغییر مقیاس با لنگرِ مرکزِ دو انگشت
+  const tlPointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchBase = useRef<{ dist: number; pxs: number } | null>(null);
+
   const onTlPointerDown = (e: React.PointerEvent) => {
+    tlPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (tlPointers.current.size === 2) {
+      // ورود به حالت پینچ — اسکراب لغو می‌شود
+      scrubbing.current = false;
+      const [a, b] = [...tlPointers.current.values()];
+      pinchBase.current = { dist: Math.max(8, Math.hypot(a.x - b.x, a.y - b.y)), pxs: pxsRef.current };
+      return;
+    }
     scrubbing.current = true;
     tapInfo.current = { t: performance.now(), x: e.clientX };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     seekFromPointer(e.clientX);
   };
   const onTlPointerMove = (e: React.PointerEvent) => {
+    if (tlPointers.current.has(e.pointerId)) tlPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinchBase.current && tlPointers.current.size >= 2) {
+      const [a, b] = [...tlPointers.current.values()];
+      const dist = Math.max(8, Math.hypot(a.x - b.x, a.y - b.y));
+      const ratio = dist / pinchBase.current.dist;
+      const next = Math.max(18, Math.min(160, Math.round(pinchBase.current.pxs * ratio)));
+      setPxs(next);
+      // لنگر: مرکز پینچ روی همان زمان بماند
+      const el = tlRef.current;
+      if (el) {
+        const mid = (a.x + b.x) / 2;
+        const rect = el.getBoundingClientRect();
+        const anchorTime = (mid - rect.left + el.scrollLeft) / pxsRef.current;
+        el.scrollLeft = Math.max(0, anchorTime * next - (mid - rect.left));
+      }
+      return;
+    }
     if (scrubbing.current) seekFromPointer(e.clientX);
   };
   const onTlPointerUp = (e?: React.PointerEvent) => {
+    if (e && tlPointers.current.has(e.pointerId)) tlPointers.current.delete(e.pointerId);
+    if (tlPointers.current.size < 2) pinchBase.current = null;
     // simple short tap on empty timeline area = deselect (back to main tools)
-    if (e && tapInfo.current) {
+    if (e && tapInfo.current && tlPointers.current.size === 0) {
       const dt = performance.now() - tapInfo.current.t;
       const dx = Math.abs(e.clientX - tapInfo.current.x);
-      if (dt < 350 && dx < 10) setSelection(null);
+      if (dt < 350 && dx < 10) {
+        setSelection(null);
+        setBoundary(null);
+      }
     }
     tapInfo.current = null;
     scrubbing.current = false;
@@ -1371,7 +1515,7 @@ export function VideoView() {
   const hasContent = project.clips.length > 0 || project.overlays.length > 0 || project.texts.length > 0;
   const [pw, ph] = PREVIEW_RES[project.aspect];
 
-  // ── toolbar config ──
+  // ── toolbar config — ابزارهای بافتاری (§5/§13): فقط ابزارهای مرتبط با انتخاب فعلی ──
   const isLastClip = !!selectedClip && project.clips[project.clips.length - 1]?.id === selectedClip.id;
   const mainTools = [
     { icon: Plus, label: "رسانه", onClick: () => setSheet("media") },
@@ -1391,9 +1535,25 @@ export function VideoView() {
     { icon: MapPin, label: "نشانگر", onClick: addMarker },
   ];
 
-  const clipTools = selectedClip
+  // ابزارهای ترنزیشن — فقط وقتی یک ترنزیشن/نقطهٔ تدوین انتخاب شده (§5)
+  const dirSupported = !!selectedTransition && ["slide", "push", "wipe", "spin"].includes(selectedTransition.type);
+  const transitionTools: { icon: React.ElementType; label: string; onClick: () => void; danger?: boolean; accent?: boolean }[] = selectedTransition
+    ? [
+        { icon: ArrowLeftRight, label: "تغییر نوع", onClick: () => setSheet("transition"), accent: true },
+        { icon: Timer, label: "مدت", onClick: () => setSheet("transition") },
+        ...(dirSupported ? [{ icon: MoveHorizontal, label: "جهت", onClick: cycleSelectedTransitionDir }] : []),
+        { icon: Trash2, label: "حذف ترنزیشن", onClick: removeSelectedTransition, danger: true },
+      ]
+    : [];
+
+  const clipTools = selectedTransition
+    ? transitionTools
+    : selectedClip
     ? [
         { icon: Scissors, label: "برش", onClick: splitSelected },
+        { icon: ArrowLeftRight, label: "ترنزیشن", onClick: () => { const b = boundaryForClip(selectedClip.id); if (b) openBoundary(b); else toast.error("این کلیپ مرزی ندارد"); } },
+        { icon: SlidersHorizontal, label: "پریست‌ها", onClick: () => setSheet("presets") },
+        { icon: Sparkles, label: "افکت‌ها", onClick: () => setSheet("effects") },
         { icon: Settings2, label: "سرعت/صدا", onClick: () => setSheet("clip-basic") },
         { icon: Crop, label: selectedClip?.crop && (selectedClip.crop.w < 0.999 || selectedClip.crop.h < 0.999) ? "کراپ ✓" : "کراپ", onClick: () => setSheet("crop") },
         { icon: Vibrate, label: selectedClip.stab ? "بی‌لرزش ✓" : "لرزش‌گیر", onClick: stabilizeSelected, accent: !!selectedClip.stab } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
@@ -1402,7 +1562,6 @@ export function VideoView() {
         { icon: Frame, label: selectedClip.mask?.shape && selectedClip.mask.shape !== "none" ? "ماسک ✓" : "ماسک", onClick: () => setSheet("mask"), accent: !!(selectedClip.mask && selectedClip.mask.shape !== "none") } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
         { icon: Diamond, label: selectedClip.kf ? "کی‌فریم ✓" : "کی‌فریم", onClick: () => setSheet("kf"), accent: !!selectedClip.kf } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
         { icon: FlipHorizontal2, label: "چرخش", onClick: () => setSheet("clip-motion") },
-        { icon: ArrowLeftRight, label: "ترنزیشن", onClick: () => setSheet("transition") },
         { icon: Layers, label: "کروما", onClick: () => setSheet("chroma") },
         { icon: SkipForward, label: "ادامه", onClick: () => setSheet("extend"), accent: isLastClip } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
         { icon: PictureInPicture2, label: "به لایه", onClick: () => sendClipToOverlay(selectedClip.id) },
@@ -1415,6 +1574,8 @@ export function VideoView() {
       ]
     : selectedOverlay
       ? [
+          { icon: SlidersHorizontal, label: "پریست‌ها", onClick: () => setSheet("presets") },
+          { icon: Sparkles, label: "افکت‌ها", onClick: () => setSheet("effects") },
           { icon: Settings2, label: "زمان", onClick: () => setSheet("clip-basic") },
           { icon: Crop, label: selectedOverlay?.crop && (selectedOverlay.crop.w < 0.999 || selectedOverlay.crop.h < 0.999) ? "کراپ ✓" : "کراپ", onClick: () => setSheet("crop") },
           { icon: Palette, label: "فیلتر", onClick: () => setSheet("clip-look") },
@@ -1432,6 +1593,7 @@ export function VideoView() {
       : selectedText
         ? [
             { icon: Type, label: "ویرایش", onClick: () => setSheet("text") },
+            { icon: SlidersHorizontal, label: "پریست‌ها", onClick: () => setSheet("presets") },
             { icon: ClipboardCopy, label: "رونوشت", onClick: () => void copySelectedToClipboard() },
             { icon: Copy, label: "تکرار", onClick: duplicateSelected },
             { icon: Trash2, label: "حذف", onClick: deleteSelected, danger: true },
@@ -1447,9 +1609,9 @@ export function VideoView() {
           : mainTools;
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-76px)] max-w-lg mx-auto" dir="ltr">
+    <div className="flex flex-col h-[calc(100dvh-76px)] max-w-lg mx-auto lg:max-w-none" dir="ltr">
       {/* top bar */}
-      <div dir="rtl" className="flex items-center justify-between gap-2 px-3 pt-3 pb-1.5">
+      <div dir="rtl" className="flex items-center justify-between gap-2 px-3 pt-3 pb-1.5 shrink-0">
         <div className="flex items-center gap-1.5">
           <Clapperboard size={20} className="text-primary" />
           <h1 className="font-display text-lg">استودیو ویدئو</h1>
@@ -1492,76 +1654,102 @@ export function VideoView() {
       </div>
       <span className="hidden">{undoTick}</span>
 
-      {/* preview */}
-      <div className="flex-1 min-h-0 flex items-center justify-center px-3 bg-black/40">
-        <canvas
-          ref={canvasRef}
-          width={pw}
-          height={ph}
-          onClick={togglePlay}
-          className="max-w-full max-h-full rounded-xl shadow-2xl shadow-black/50 ring-1 ring-white/10 cursor-pointer"
-        />
-      </div>
-
-      {/* transport */}
-      <div dir="rtl" className="flex items-center justify-center gap-3 py-2">
-        <button
-          onClick={togglePlay}
-          aria-label={playing ? "توقف" : "پخش"}
-          className="w-11 h-11 rounded-full bg-primary/15 border border-primary/40 text-primary flex items-center justify-center"
-        >
-          {playing ? <Pause size={20} /> : <Play size={20} className="mr-0.5" />}
-        </button>
-        <div className="text-xs text-muted-foreground font-mono" dir="ltr">
-          {fmtTime(time)} / {fmtTime(total)}
-        </div>
-      </div>
-
-      {/* toolbar — horizontally scrollable when features overflow */}
-      <div dir="rtl" className="relative px-2 pb-1">
-        <div className="overflow-x-auto scroll-thin pb-1 -mb-1">
-          <div className="flex items-center gap-1.5 w-max">
-            {clipTools.map((t) => {
-              const Icon = t.icon as React.ElementType;
-              return (
-                <button
-                  key={t.label}
-                  onClick={t.onClick}
-                  className={`flex flex-col items-center gap-1 min-w-[58px] px-2 py-1.5 rounded-xl border text-[10px] transition-colors ${
-                    (t as { danger?: boolean }).danger
-                      ? "border-red-500/30 text-red-300 bg-red-500/10"
-                      : (t as { accent?: boolean }).accent
-                        ? "border-accent/40 text-accent bg-accent/10"
-                        : "border-border bg-secondary/70"
-                  }`}
-                >
-                  <Icon size={18} />
-                  {t.label}
-                </button>
-              );
-            })}
+      {/* workspace: preview+timeline (همیشه مرئی) | inspector (دسکتاپ) */}
+      <div className="flex flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0">
+          {/* preview — وقتی پنل ابزار باز است هم دیده می‌شود (§3/§17) */}
+          <div className={`flex-1 min-h-0 flex items-center justify-center px-3 bg-black/40 ${sheet && !isDesktop ? "min-h-[21dvh]" : ""}`}>
+            <canvas
+              ref={canvasRef}
+              width={pw}
+              height={ph}
+              onClick={togglePlay}
+              className="max-w-full max-h-full rounded-xl shadow-2xl shadow-black/50 ring-1 ring-white/10 cursor-pointer"
+            />
           </div>
-        </div>
-        {/* scroll hint gradients */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-7 bg-gradient-to-r from-[#0a0a12] to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-[#0a0a12] to-transparent" />
-      </div>
 
-      {/* timeline */}
-      <div
-        ref={tlRef}
-        dir="ltr"
-        className="overflow-x-auto no-scrollbar border-t border-white/[0.06] bg-black/30 px-0"
-        onPointerDown={onTlPointerDown}
-        onPointerMove={onTlPointerMove}
-        onPointerUp={onTlPointerUp}
-        onPointerLeave={() => onTlPointerUp()}
-      >
-        <div className="relative py-2" style={{ width: Math.max(400, total * PX + 80) }}>
+          {/* transport — روی موبایل وقتی پنل ابزار باز است مخفی می‌شود تا پیش‌نمایش+تایم‌لاین جا بمانند */}
+          {!sheet && (
+            <div dir="rtl" className="flex items-center justify-center gap-3 py-1.5 shrink-0">
+              <button
+                onClick={togglePlay}
+                aria-label={playing ? "توقف" : "پخش"}
+                className="w-10 h-10 rounded-full bg-primary/15 border border-primary/40 text-primary flex items-center justify-center"
+              >
+                {playing ? <Pause size={18} /> : <Play size={18} className="mr-0.5" />}
+              </button>
+              <div className="text-xs text-muted-foreground font-mono" dir="ltr">
+                {fmtTime(time)} / {fmtTime(total)}
+              </div>
+            </div>
+          )}
+
+          {/* contextual toolbar (موبایل) — با باز شدن پنل، خودِ پنل جایگزینش می‌شود */}
+          {!sheet && (
+            <div dir="rtl" className="relative px-2 pb-1 lg:hidden shrink-0">
+              <div className="overflow-x-auto scroll-thin pb-1 -mb-1">
+                <div className="flex items-center gap-1.5 w-max">
+                  {clipTools.map((t) => {
+                    const Icon = t.icon as React.ElementType;
+                    return (
+                      <button
+                        key={t.label}
+                        onClick={t.onClick}
+                        className={`flex flex-col items-center gap-1 min-w-[58px] px-2 py-1.5 rounded-xl border text-[10px] transition-colors ${
+                          (t as { danger?: boolean }).danger
+                            ? "border-red-500/30 text-red-300 bg-red-500/10"
+                            : (t as { accent?: boolean }).accent
+                              ? "border-accent/40 text-accent bg-accent/10"
+                              : "border-border bg-secondary/70"
+                        }`}
+                      >
+                        <Icon size={18} />
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* scroll hint gradients */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-7 bg-gradient-to-r from-[#0a0a12] to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-7 bg-gradient-to-l from-[#0a0a12] to-transparent" />
+            </div>
+          )}
+
+      {/* timeline — shrink-0 تا همیشه کامل مرئی بماند (§4) */}
+      <div className="relative shrink-0 border-t border-white/[0.06] bg-black/30">
+        {/* zoom controls (§14) */}
+        <div className="absolute -top-0.5 right-2 z-40 flex items-center gap-1" dir="ltr">
+          <button
+            onClick={() => setPxs((v) => Math.max(18, Math.round(v / 1.35)))}
+            aria-label="کوچک‌نمایی تایم‌لاین"
+            className="w-7 h-7 rounded-lg bg-[#17141f]/90 border border-white/15 text-white/80 flex items-center justify-center"
+          >
+            <ZoomOut size={14} />
+          </button>
+          <button
+            onClick={() => setPxs((v) => Math.min(160, Math.round(v * 1.35)))}
+            aria-label="بزرگ‌نمایی تایم‌لاین"
+            className="w-7 h-7 rounded-lg bg-[#17141f]/90 border border-white/15 text-white/80 flex items-center justify-center"
+          >
+            <ZoomIn size={14} />
+          </button>
+        </div>
+        <div
+          ref={tlRef}
+          dir="ltr"
+          className="overflow-x-auto no-scrollbar px-0"
+          style={{ touchAction: "pan-x" }}
+          onPointerDown={onTlPointerDown}
+          onPointerMove={onTlPointerMove}
+          onPointerUp={onTlPointerUp}
+          onPointerLeave={() => onTlPointerUp()}
+        >
+        <div className="relative py-2" style={{ width: Math.max(400, total * pxs + 80) }}>
           {/* ruler */}
           <div className="relative h-5 border-b border-white/10 mb-1">
             {Array.from({ length: Math.ceil(total) + 1 }).map((_, s) => (
-              <div key={s} className="absolute top-0 h-full flex items-end" style={{ left: s * PX }}>
+              <div key={s} className="absolute top-0 h-full flex items-end" style={{ left: s * pxs }}>
                 <div className="w-px h-2 bg-white/25" />
                 {s % 5 === 0 && (
                   <span className="absolute left-1 -top-0.5 text-[9px] text-muted-foreground font-mono">{s}s</span>
@@ -1578,7 +1766,7 @@ export function VideoView() {
                 }}
                 title="نشانگر — کلیک: پرش / نگه‌داشتن برای حذف"
                 className="absolute -top-0.5 w-3 h-3 rotate-45 bg-accent rounded-[2px] border border-black/40 z-10"
-                style={{ left: m.t * PX - 6 }}
+                style={{ left: m.t * pxs - 6 }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   mutate((p) => (p.markers = p.markers.filter((x) => x.id !== m.id)));
@@ -1602,8 +1790,8 @@ export function VideoView() {
                 <button
                   key={c.id}
                   style={{
-                    left: st * PX,
-                    width: Math.max(30, clipDur(c) * PX - 2),
+                    left: st * pxs,
+                    width: Math.max(30, clipDur(c) * pxs - 2),
                     touchAction: "none",
                     ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
                   }}
@@ -1633,6 +1821,47 @@ export function VideoView() {
                 </button>
               );
             })}
+            {/* edit-point handles + transition bands (§7/§9) — هر مرز فقط ترنزیشن خودش را نشان می‌دهد */}
+            {project.clips.slice(1).map((cRight, i) => {
+              const cLeft = project.clips[i];
+              const bStart = clipStart(project, cRight.id);
+              const tr = project.transitions.find((t) => t.leftClipId === cLeft.id && t.rightClipId === cRight.id);
+              const isSelTr = !!(tr && selection?.type === "transition" && selection.id === tr.id);
+              const pulse = pulseBoundary === `${cLeft.id}|${cRight.id}`;
+              const card = tr ? TRANSITION_CARDS.find((x) => (tr.preset ?? tr.type) === x.id) : undefined;
+              const trLabel = tr ? (card?.name ?? tr.type) : "";
+              return (
+                <div key={`bp-${cRight.id}`}>
+                  {tr && (
+                    <div
+                      className="absolute top-0 h-full pointer-events-none z-10 border-x border-accent/70 bg-accent/25"
+                      style={{ left: bStart * pxs, width: Math.max(5, Math.min(tr.dur, clipDur(cRight)) * pxs) }}
+                    >
+                      <span className="absolute inset-x-0 top-0 text-center text-[8px] leading-3 text-accent truncate">{trLabel}</span>
+                    </div>
+                  )}
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openBoundary({ leftId: cLeft.id, rightId: cRight.id });
+                    }}
+                    aria-label="نقطهٔ تدوین — ترنزیشن"
+                    title={tr ? `ترنزیشن ${trLabel} — ${tr.dur.toFixed(2)}s` : "نقطهٔ تدوین — برای افزودن ترنزیشن بزن"}
+                    className={`absolute top-1/2 -translate-y-1/2 z-30 w-[20px] h-[20px] -ml-[10px] flex items-center justify-center transition-transform ${pulse ? "scale-150" : ""}`}
+                    style={{ left: bStart * pxs }}
+                  >
+                    <span
+                      className={`w-[11px] h-[11px] rotate-45 rounded-[2px] border transition-all ${
+                        tr
+                          ? "bg-accent border-accent shadow-[0_0_9px_rgba(240,180,120,0.95)]"
+                          : "bg-[#151220] border-white/50"
+                      } ${isSelTr ? "ring-2 ring-primary ring-offset-1 ring-offset-black/60" : ""}`}
+                    />
+                  </button>
+                </div>
+              );
+            })}
             {project.clips.length === 0 && (
               <div className="absolute inset-x-2 top-1 h-10 rounded-lg border border-dashed border-white/15 flex items-center justify-center text-[10px] text-muted-foreground">
                 تایم‌لاین اصلی — از «رسانه» ویدئو یا عکس اضافه کن
@@ -1650,8 +1879,8 @@ export function VideoView() {
                 <button
                   key={o.id}
                   style={{
-                    left: o.start * PX,
-                    width: Math.max(26, o.dur * PX - 2),
+                    left: o.start * pxs,
+                    width: Math.max(26, o.dur * pxs - 2),
                     touchAction: "none",
                     ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
                   }}
@@ -1687,8 +1916,8 @@ export function VideoView() {
                 <button
                   key={t.id}
                   style={{
-                    left: t.start * PX,
-                    width: Math.max(24, (t.end - t.start) * PX - 2),
+                    left: t.start * pxs,
+                    width: Math.max(24, (t.end - t.start) * pxs - 2),
                     background: t.isCaption ? "rgba(139,92,246,0.28)" : "rgba(59,130,246,0.25)",
                     touchAction: "none",
                     ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
@@ -1721,8 +1950,8 @@ export function VideoView() {
                 <button
                   key={a.id}
                   style={{
-                    left: a.start * PX,
-                    width: Math.max(26, (a.out - a.in) * PX - 2),
+                    left: a.start * pxs,
+                    width: Math.max(26, (a.out - a.in) * pxs - 2),
                     background: "linear-gradient(90deg, rgba(16,185,129,0.35), rgba(16,185,129,0.15))",
                     touchAction: "none",
                     ...(isDragging ? { transform: `translateX(${(drag as { dx: number }).dx}px)`, zIndex: 50, opacity: 0.85 } : null),
@@ -1748,15 +1977,71 @@ export function VideoView() {
           </div>
 
           {/* playhead */}
-          <div className="absolute top-1 bottom-1 w-0.5 bg-red-400 z-20 pointer-events-none" style={{ left: time * PX }}>
+          <div className="absolute top-1 bottom-1 w-0.5 bg-red-400 z-20 pointer-events-none" style={{ left: time * pxs }}>
             <div className="w-2.5 h-2.5 -ml-1 rounded-full bg-red-400" />
           </div>
         </div>
+        </div>
+      </div>
       </div>
 
+      {/* desktop inspector (§4) — ابزارهای بافتاری عمودی + پنل ابزار، پیش‌نمایش همیشه مرئی */}
+      <aside className="hidden lg:flex flex-col w-[340px] shrink-0 border-l border-white/10 bg-[#0d0b14]">
+        <div dir="rtl" className="p-2 border-b border-white/10 max-h-[42%] overflow-y-auto scroll-thin">
+          <div className="flex flex-wrap gap-1.5">
+            {clipTools.map((t) => {
+              const Icon = t.icon as React.ElementType;
+              return (
+                <button
+                  key={t.label}
+                  onClick={t.onClick}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] transition-colors ${
+                    (t as { danger?: boolean }).danger
+                      ? "border-red-500/30 text-red-300 bg-red-500/10"
+                      : (t as { accent?: boolean }).accent
+                        ? "border-accent/40 text-accent bg-accent/10"
+                        : "border-border bg-secondary/70"
+                  }`}
+                >
+                  <Icon size={14} />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto scroll-thin overscroll-contain p-3">
+          {sheet ? (
+            <>
+              <div className="flex items-center justify-between mb-2.5">
+                <h3 className="font-display text-base">{SHEET_TITLES[sheet]}</h3>
+                <button onClick={() => setSheet(null)} aria-label="بستن پنل" className="p-1.5 rounded-lg border border-border bg-secondary/60">
+                  <X size={14} />
+                </button>
+              </div>
+              {renderSheetContent()}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground leading-6 pt-2">
+              {selectedTransition
+                ? "ترنزیشن انتخاب‌شده فقط به همین نقطهٔ تدوین تعلق دارد — تغییرش فقط همین مرز را عوض می‌کند."
+                : "یک کلیپ، متن یا نقطهٔ تدوین را از تایم‌لاین انتخاب کن — ابزارهای همان انتخاب اینجا ظاهر می‌شوند."}
+            </p>
+          )}
+        </div>
+      </aside>
+      </div>
+
+      {/* mobile tool dock (§17) — پنل داخلیِ زیر تایم‌لاین، نه مودالِ تمام‌صفحه */}
+      {sheet && !isDesktop && (
+        <ToolDock title={SHEET_TITLES[sheet] ?? ""} onClose={() => setSheet(null)}>
+          {renderSheetContent()}
+        </ToolDock>
+      )}
+
       {/* empty-state helper */}
-      {!hasContent && (
-        <div dir="rtl" className="px-4 py-2 text-center text-[11px] text-muted-foreground">
+      {!hasContent && !sheet && (
+        <div dir="rtl" className="px-4 py-2 text-center text-[11px] text-muted-foreground shrink-0">
           💡 نکته: اول ویدئو اضافه کن، بعد روی کلیپ بزن تا ابزارهای برش، سرعت، فیلتر و… ظاهر شوند.
         </div>
       )}
@@ -1778,44 +2063,107 @@ export function VideoView() {
           )}
         </div>
       )}
+    </div>
+  );
 
-      {/* sheets */}
-      <Sheet open={!!sheet} onOpenChange={(o) => !o && setSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[88dvh] overflow-y-auto scroll-thin overscroll-contain bg-[#12101c] border-white/10">
-          <SheetHeader dir="rtl" className="pb-1">
-            <SheetTitle className="font-display text-base">{SHEET_TITLES[sheet ?? ""]}</SheetTitle>
-          </SheetHeader>
-          <div dir="rtl" className="px-4 pb-10">
-            {sheet === "media" && <MediaSheet ctx={ctx} />}
-            {sheet === "aspect" && <AspectSheet ctx={ctx} />}
-            {sheet === "clip-basic" && <ClipBasicSheet ctx={ctx} />}
-            {sheet === "crop" && <CropSheet ctx={ctx} />}
-            {sheet === "clip-look" && <ClipLookSheet ctx={ctx} />}
-            {sheet === "clip-motion" && <ClipMotionSheet ctx={ctx} />}
-            {sheet === "transition" && <TransitionSheet ctx={ctx} />}
-            {sheet === "chroma" && <ChromaSheet ctx={ctx} />}
-            {sheet === "text" && <TextSheet ctx={ctx} />}
-            {sheet === "audio" && <AudioSheet ctx={ctx} />}
-            {sheet === "captions" && <CaptionSheet ctx={ctx} />}
-            {sheet === "dub" && <DubbingSheet ctx={ctx} />}
-            {sheet === "ai-edit" && <AiEditSheet ctx={ctx} />}
-            {sheet === "ai-agent" && <AgentSheet ctx={ctx} />}
-            {sheet === "templates" && <TemplatesSheet ctx={ctx} />}
-            {sheet === "autovid" && <AutoVideoSheet ctx={ctx} />}
-            {sheet === "markers" && <MarkersSheet ctx={ctx} />}
-            {sheet === "export" && <ExportSheet ctx={ctx} engine={engineRef.current} />}
-            {sheet === "stickers" && <StickersSheet ctx={ctx} />}
-            {sheet === "sfx" && <SfxSheet ctx={ctx} />}
-            {sheet === "mask" && <MaskSheet ctx={ctx} />}
-            {sheet === "kf" && <KeyframeSheet ctx={ctx} />}
-            {sheet === "ai-clipper" && <AiClipperSheet ctx={ctx} />}
-            {sheet === "extend" && <ExtendSheet ctx={ctx} />}
-            {sheet === "project" && (
-              <ProjectSaveSheet ctx={ctx} projectId={projectId} projectName={projectName} saving={saving} onSave={saveToDb} />
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+  function renderSheetContent() {
+    switch (sheet) {
+      case "media":
+        return <MediaSheet ctx={ctx} />;
+      case "aspect":
+        return <AspectSheet ctx={ctx} />;
+      case "clip-basic":
+        return <ClipBasicSheet ctx={ctx} />;
+      case "crop":
+        return <CropSheet ctx={ctx} />;
+      case "clip-look":
+        return <ClipLookSheet ctx={ctx} />;
+      case "clip-motion":
+        return <ClipMotionSheet ctx={ctx} />;
+      case "transition":
+        return (
+          <TransitionBrowser
+            ctx={ctx}
+            boundary={selectedTransitionBoundary ?? boundary}
+            onBoundaryClear={() => {
+              setBoundary(null);
+              setSheet(null);
+            }}
+          />
+        );
+      case "presets":
+        return <PresetsBrowser ctx={ctx} />;
+      case "effects":
+        return (
+          <EffectsBrowser
+            ctx={ctx}
+            onOpenSheet={(id) => {
+              if (id === "stab") stabilizeSelected();
+              else setSheet(id);
+            }}
+          />
+        );
+      case "chroma":
+        return <ChromaSheet ctx={ctx} />;
+      case "text":
+        return <TextSheet ctx={ctx} />;
+      case "audio":
+        return <AudioSheet ctx={ctx} />;
+      case "captions":
+        return <CaptionSheet ctx={ctx} />;
+      case "dub":
+        return <DubbingSheet ctx={ctx} />;
+      case "ai-edit":
+        return <AiEditSheet ctx={ctx} />;
+      case "ai-agent":
+        return <AgentSheet ctx={ctx} />;
+      case "templates":
+        return <TemplatesSheet ctx={ctx} />;
+      case "autovid":
+        return <AutoVideoSheet ctx={ctx} />;
+      case "markers":
+        return <MarkersSheet ctx={ctx} />;
+      case "export":
+        return <ExportSheet ctx={ctx} engine={engineRef.current} />;
+      case "stickers":
+        return <StickersSheet ctx={ctx} />;
+      case "sfx":
+        return <SfxSheet ctx={ctx} />;
+      case "mask":
+        return <MaskSheet ctx={ctx} />;
+      case "kf":
+        return <KeyframeSheet ctx={ctx} />;
+      case "ai-clipper":
+        return <AiClipperSheet ctx={ctx} />;
+      case "extend":
+        return <ExtendSheet ctx={ctx} />;
+      case "project":
+        return <ProjectSaveSheet ctx={ctx} projectId={projectId} projectName={projectName} saving={saving} onSave={saveToDb} />;
+      default:
+        return null;
+    }
+  }
+}
+
+/** پنل ابزار داخلی (بجای Sheet تمام‌صفحه) — پیش‌نمایش و تایم‌لاین هرگز کاملاً پوشیده نمی‌شوند */
+function ToolDock({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div
+      className="shrink-0 rounded-t-2xl border-t border-white/10 bg-[#12101c] shadow-[0_-14px_44px_rgba(0,0,0,0.6)] flex flex-col"
+      style={{ height: "min(46dvh, 430px)" }}
+    >
+      <div className="flex justify-center pt-1.5 shrink-0">
+        <div className="h-1 w-10 rounded-full bg-white/25" />
+      </div>
+      <div dir="rtl" className="flex items-center justify-between px-4 py-1 shrink-0">
+        <span className="font-display text-base">{title}</span>
+        <button onClick={onClose} aria-label="بستن پنل" className="p-1.5 rounded-lg border border-border bg-secondary/60">
+          <X size={14} />
+        </button>
+      </div>
+      <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto scroll-thin overscroll-contain px-4 pb-6">
+        {children}
+      </div>
     </div>
   );
 }

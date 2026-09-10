@@ -8,7 +8,8 @@ import type { BankTemplate, Scene } from "@/lib/template-bank/schema";
 import {
   DEFAULT_FILTER, DEFAULT_TRANSFORM, FILTER_PRESETS, uid,
   type AudioItem, type Clip, type FilterState, type MediaAsset, type Project,
-  type TextItem, type TransformState, type TransitionType,
+  type TextItem, type TransformState, type TransitionDirection, type TransitionType,
+  sanitizeTransition,
 } from "./types";
 import type { Keyframe, KeyframeMap } from "./keyframes";
 import type { PendingBankPayload } from "./transfer";
@@ -20,23 +21,24 @@ const ASPECT_DIMS: Record<string, { w: number; h: number }> = {
   "4:5": { w: 1080, h: 1350 },
 };
 
-const TRANS_MAP: Record<string, { type: TransitionType; dur: number }> = {
-  cut: { type: "none", dur: 0 },
+/** خروجی صحنهٔ بانک → ترنزیشن واقعی روی مرزِ بعدی (null = cut) */
+const TRANS_MAP: Record<string, { type: TransitionType; dur: number; direction?: TransitionDirection } | null> = {
+  cut: null,
   fade: { type: "fade", dur: 0.5 },
-  dipBlack: { type: "black", dur: 0.6 },
-  dropBlack: { type: "black", dur: 0.5 },
-  dipWhite: { type: "fade", dur: 0.5 },
-  slideL: { type: "slide", dur: 0.5 },
-  slideR: { type: "slide", dur: 0.5 },
-  whipL: { type: "slide", dur: 0.4 },
-  whipR: { type: "slide", dur: 0.4 },
-  wipeUpTr: { type: "slide", dur: 0.5 },
+  dipBlack: { type: "dipBlack", dur: 0.6 },
+  dropBlack: { type: "dipBlack", dur: 0.5 },
+  dipWhite: { type: "dipWhite", dur: 0.5 },
+  slideL: { type: "slide", dur: 0.5, direction: "left" },
+  slideR: { type: "slide", dur: 0.5, direction: "right" },
+  whipL: { type: "push", dur: 0.4, direction: "left" },
+  whipR: { type: "push", dur: 0.4, direction: "right" },
+  wipeUpTr: { type: "wipe", dur: 0.5, direction: "up" },
   zoomBlur: { type: "zoom", dur: 0.5 },
   zoomPunch: { type: "zoom", dur: 0.35 },
-  spinTr: { type: "zoom", dur: 0.55 },
-  flashTr: { type: "fade", dur: 0.3 },
-  glitchTr: { type: "fade", dur: 0.4 },
-  filmBurnTr: { type: "black", dur: 0.6 },
+  spinTr: { type: "spin", dur: 0.55, direction: "right" },
+  flashTr: { type: "flash", dur: 0.3 },
+  glitchTr: { type: "glitch", dur: 0.4 },
+  filmBurnTr: { type: "lightLeak", dur: 0.6, direction: undefined },
 };
 
 const TEXT_SIZE_PX: Record<string, number> = { sm: 46, md: 72, lg: 104, xl: 140 };
@@ -235,13 +237,15 @@ export async function buildProjectFromBank(payload: PendingBankPayload): Promise
   if (preset) Object.assign(filterState, preset.state, { presetId: preset.id });
 
   const clips: Clip[] = [];
+  /** ترنزیشن‌های مرزی: خروجی صحنهٔ i به مرزِ (کلیپ i-1 | کلیپ i) می‌چسبد — مدل Edit-Point */
+  const boundarySpecs: ({ type: TransitionType; dur: number; direction?: TransitionDirection } | null)[] = [];
   for (const scene of template.scenes) {
     const asset = scene.slot ? assetBySlot.get(scene.slot) : undefined;
     if (!asset) continue;
     const isVideo = asset.type === "video";
     const srcDur = asset.duration || (isVideo ? 10 : 10);
     const dur = isVideo ? Math.min(scene.d, Math.max(0.5, srcDur)) : scene.d;
-    const tr = TRANS_MAP[scene.out ?? "cut"] ?? { type: "fade" as TransitionType, dur: 0.5 };
+    boundarySpecs.push(TRANS_MAP[scene.out ?? "cut"] ?? null);
     // C2: موشن صحنه حالا واقعاً به کی‌فریم تبدیل می‌شود
     const mt = motionTransform(scene.motion ?? "hold", dur);
     const fxVignette = scene.fx?.includes("vignette") ? 0.35 : 0;
@@ -260,12 +264,25 @@ export async function buildProjectFromBank(payload: PendingBankPayload): Promise
       muted: isVideo ? false : true,
       fadeIn: 0,
       fadeOut: 0,
-      transitionIn: { type: tr.type, dur: tr.dur },
       srcDur: isVideo ? srcDur : 10,
       srcW: asset.width || 1080,
       srcH: asset.height || 1920,
       ...(mt.kf ? { kf: mt.kf } : {}),
     });
+  }
+
+  // ۳ب) ترنزیشن‌های واقعی روی مرزها — هر مرز فقط ترنزیشن خودش را دارد
+  const transitions: Project["transitions"] = [];
+  for (let i = 1; i < clips.length; i++) {
+    const spec = boundarySpecs[i] ?? null; // خروجی صحنهٔ i = مرز ورودیِ کلیپ i
+    if (!spec) continue;
+    const dl = Math.max(0.1, clips[i - 1].out - clips[i - 1].in);
+    const dr = Math.max(0.1, clips[i].out - clips[i].in);
+    const t = sanitizeTransition(
+      { ...spec, leftClipId: clips[i - 1].id, rightClipId: clips[i].id },
+      dl, dr, () => uid("tr")
+    );
+    if (t) transitions.push(t);
   }
 
   // ۴) متن‌ها
@@ -337,6 +354,7 @@ export async function buildProjectFromBank(payload: PendingBankPayload): Promise
   const project: Project = {
     aspect: (template.aspect as Project["aspect"]) ?? "9:16",
     clips,
+    transitions,
     overlays: [],
     texts: textsOut,
     audios,

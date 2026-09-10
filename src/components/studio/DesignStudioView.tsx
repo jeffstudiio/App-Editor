@@ -156,7 +156,7 @@ export function DesignStudioView({ onNavigate }: { onNavigate: (v: ViewId) => vo
       id: uid("cl"), kind: "image", assetId: asset.id, name: "طراحی AI",
       in: 0, out: 4, speed: 1, transform: { ...DEFAULT_TRANSFORM }, filter: { ...DEFAULT_FILTER },
       chroma: { ...DEFAULT_CHROMA }, volume: 0, muted: true, fadeIn: 0, fadeOut: 0,
-      transitionIn: { type: "fade", dur: 0.5 }, srcDur: 4, srcW: 1080, srcH: 1920,
+      srcDur: 4, srcW: 1080, srcH: 1920,
     });
     setPendingProject({ project: p, assets: [asset], name: "طراحی AI" });
     toast.success("در ادیتور بارگذاری شد — ادامه بده 🎬");

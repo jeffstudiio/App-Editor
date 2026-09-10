@@ -65,7 +65,7 @@ const raw = {
 };
 const np = normalizeProject(raw);
 eq("normalize keeps valid aspect", np.aspect, "1:1");
-eq("schemaVersion", np.schemaVersion, 2);
+eq("schemaVersion", np.schemaVersion, 3);
 eq("clip speed clamped", np.clips[0].speed, 4);
 eq("clip transform merged", np.clips[0].transform.scale, 2);
 eq("clip transform default merged", np.clips[0].transform.rotate, 0);
@@ -81,7 +81,7 @@ const p = emptyProject("9:16");
 p.clips.push({
   id: "c1", kind: "video", assetId: "a", name: "x", in: 0, out: 5, speed: 1,
   transform: {} as never, filter: {} as never, chroma: {} as never,
-  volume: 1, muted: false, fadeIn: 0, fadeOut: 0, transitionIn: { type: "none", dur: 0 },
+  volume: 1, muted: false, fadeIn: 0, fadeOut: 0,
   srcDur: 10, srcW: 100, srcH: 100,
 });
 p.overlays.push({

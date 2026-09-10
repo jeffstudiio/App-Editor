@@ -37,7 +37,6 @@ function makeImageClip(asset: MediaAsset, dur: number, name: string, index: numb
     muted: true,
     fadeIn: 0,
     fadeOut: 0,
-    transitionIn: { type: index === 0 ? "black" : "fade", dur: index === 0 ? 0.8 : 0.45 },
     srcDur: dur,
     srcW: asset.width || 1080,
     srcH: asset.height || 1920,

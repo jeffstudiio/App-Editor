@@ -123,3 +123,51 @@ export function removeKeyAt(keys: Keyframe[], t: number): Keyframe[] {
   const tt = Math.round(t * 20) / 20;
   return keys.filter((k) => Math.abs(k.t - tt) > 0.024);
 }
+
+/**
+ * شکستن کی‌فریم‌ها هنگام برش کلیپ (P0 — split واقعی).
+ * زمان‌ها نسبت به شروع کلیپ‌اند؛ srcSplitT = لحظهٔ برش بر حسب ثانیهٔ لوکالِ کلیپِ اصلی.
+ * خروجی: کی‌فریم نیمهٔ چپ (a) و نیمهٔ راست (b — زمان‌ها شیفت‌خورده) با تضمین پیوستگی:
+ * اگر کلیدی بعد از نقطهٔ برش باشد، برای A کلید مصنوعیِ همان لحظه و برای B کلید مصنوعیِ صفر ساخته می‌شود.
+ */
+export function splitKeyframeMap(
+  kf: KeyframeMap | undefined,
+  srcSplitT: number
+): { a?: KeyframeMap; b?: KeyframeMap } {
+  if (!kf) return {};
+  const a: KeyframeMap = {};
+  const b: KeyframeMap = {};
+  let anyA = false;
+  let anyB = false;
+  for (const [prop, keys] of Object.entries(kf) as [KfProp, Keyframe[] | undefined][]) {
+    if (!keys || keys.length === 0) continue;
+    const sorted = sortKeys(keys);
+    const left = sorted.filter((k) => k.t <= srcSplitT);
+    const right = sorted.filter((k) => k.t > srcSplitT);
+    if (left.length === 0 && right.length === 0) continue;
+    if (left.length > 0) {
+      const aKeys = [...left];
+      if (right.length > 0) {
+        // پیوستگی A: کلید مصنوعی در لحظهٔ برش با مقدار درون‌یابی‌شده
+        const vAtSplit = evalKf(sorted, srcSplitT, left[left.length - 1].v);
+        aKeys.push({ t: Math.round(srcSplitT * 20) / 20, v: vAtSplit, ease: "linear" });
+      }
+      a[prop] = aKeys;
+      anyA = true;
+    }
+    if (right.length > 0) {
+      const bKeys: Keyframe[] = [];
+      if (left.length > 0) {
+        // پیوستگی B: کلید مصنوعی در صفر با همان مقدار لحظهٔ برش
+        bKeys.push({ t: 0, v: evalKf(sorted, srcSplitT, left[left.length - 1].v), ease: "linear" });
+      }
+      for (const k of right) bKeys.push({ ...k, t: Math.round((k.t - srcSplitT) * 20) / 20 });
+      b[prop] = bKeys;
+      anyB = true;
+    }
+  }
+  return {
+    a: anyA ? a : undefined,
+    b: anyB ? b : undefined,
+  };
+}

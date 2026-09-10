@@ -11,7 +11,7 @@ export interface EditTemplate {
   aspect: AspectId;
   filterPresetId: string;
   captionPresetId: string;
-  transition: { type: TransitionType; dur: number };
+  transition: { type: TransitionType; dur: number } | null;
   title: string | null;
   titleDur: number;
   musicMood: string;
@@ -45,7 +45,7 @@ export const EDIT_TEMPLATES: EditTemplate[] = [
     aspect: "9:16",
     filterPresetId: "none",
     captionPresetId: "impact",
-    transition: { type: "black", dur: 0.35 },
+    transition: { type: "dipBlack", dur: 0.35 },
     title: "صبر کن تا آخر ببینی 👀",
     titleDur: 2,
     musicMood: "بیلدآپ با درام، کات روی بیت",
@@ -81,7 +81,7 @@ export const EDIT_TEMPLATES: EditTemplate[] = [
     aspect: "9:16",
     filterPresetId: "clean",
     captionPresetId: "impact",
-    transition: { type: "none", dur: 0 },
+    transition: null,
     title: null,
     titleDur: 2,
     musicMood: "بدون موزیک یا خیلی کِش (تا صدای گوینده تمیز بماند)",
@@ -221,7 +221,7 @@ export const EDIT_TEMPLATES: EditTemplate[] = [
     aspect: "9:16",
     filterPresetId: "noir",
     captionPresetId: "impact",
-    transition: { type: "black", dur: 0.4 },
+    transition: { type: "dipBlack", dur: 0.4 },
     title: "سخت‌ترین مسیرها…",
     titleDur: 3,
     musicMood: "امبینت حماسی با ساب‌بیس",
@@ -357,7 +357,7 @@ export const EDIT_TEMPLATES: EditTemplate[] = [
     aspect: "9:16",
     filterPresetId: "mint",
     captionPresetId: "minimal",
-    transition: { type: "none", dur: 0 },
+    transition: null,
     title: "روز ۱ از ۳۰ 📖",
     titleDur: 2.5,
     musicMood: "لوفای آرام بدون درام",
@@ -476,7 +476,7 @@ export const EDIT_TEMPLATES: EditTemplate[] = [
     aspect: "9:16",
     filterPresetId: "noir",
     captionPresetId: "impact",
-    transition: { type: "black", dur: 0.5 },
+    transition: { type: "dipBlack", dur: 0.5 },
     title: "اسم تو ⚡️",
     titleDur: 2,
     musicMood: "درام هیپنوتیزمی با رایزر",
@@ -527,7 +527,7 @@ export const EDIT_TEMPLATES: EditTemplate[] = [
     aspect: "9:16",
     filterPresetId: "clean",
     captionPresetId: "minimal",
-    transition: { type: "none", dur: 0 },
+    transition: null,
     title: null,
     titleDur: 2,
     musicMood: "الکترونیک تمیز بدون وکال",
@@ -540,7 +540,8 @@ export const EDIT_TEMPLATES: EditTemplate[] = [
 
 // ── shared apply logic (used by editor sheet, gallery and pending-template flow) ──
 
-import { DEFAULT_FILTER, FILTER_PRESETS, type Project, type TextItem } from "./types";
+import { DEFAULT_FILTER, FILTER_PRESETS, uid, type Project, type TextItem } from "./types";
+import { setBoundaryTransition } from "./edit-ops";
 import { SUBTITLE_PRESETS } from "@/lib/studio-data";
 import { captionTextItem, presetToCaptionPatch } from "@/components/studio/video/caption-utils";
 
@@ -549,7 +550,14 @@ export function applyTemplateToProject(p: Project, tpl: EditTemplate) {
   const fp = FILTER_PRESETS.find((x) => x.id === tpl.filterPresetId);
   for (const c of p.clips) {
     if (fp) c.filter = { ...DEFAULT_FILTER, ...fp.state, presetId: fp.id };
-    c.transitionIn = { type: tpl.transition.type, dur: tpl.transition.dur };
+  }
+  // ترنزیشن قالب → روی همهٔ مرزهای داخلی (مدل Edit-Point) — نه پراپرتی کل تایم‌لاین
+  if (tpl.transition) {
+    for (let i = 1; i < p.clips.length; i++) {
+      setBoundaryTransition(p, p.clips[i - 1].id, p.clips[i].id, { ...tpl.transition }, () => uid("tr"));
+    }
+  } else {
+    p.transitions = [];
   }
   if (tpl.title) {
     p.texts.push({

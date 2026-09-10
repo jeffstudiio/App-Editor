@@ -147,7 +147,7 @@ export function TemplatesGallery({ onNavigate }: { onNavigate: (v: ViewId) => vo
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-xl bg-secondary/50 border border-border p-2.5">ابعاد: <b>{detail.recipe.aspect}</b></div>
                 <div className="rounded-xl bg-secondary/50 border border-border p-2.5">مدت حدودی: <b>{detail.entry.estDur}</b></div>
-                <div className="rounded-xl bg-secondary/50 border border-border p-2.5">ترنزیشن: <b>{detail.recipe.transition.type === "none" ? "بدون" : detail.recipe.transition.type}</b></div>
+                <div className="rounded-xl bg-secondary/50 border border-border p-2.5">ترنزیشن: <b>{detail.recipe.transition ? detail.recipe.transition.type : "بدون"}</b></div>
                 <div className="rounded-xl bg-secondary/50 border border-border p-2.5">حس موزیک: <b className="text-[11px]">{detail.recipe.musicMood}</b></div>
               </div>
               {detail.recipe.title && (
