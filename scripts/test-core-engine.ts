@@ -135,5 +135,26 @@ eq("trimTextLeft no negative", trimTextLeft({ start: 1, end: 5 }, -4).start, 0);
 eq("trimTextRight grows", trimTextRight({ start: 1, end: 5 }, 2).end, 7);
 eq("trimTextRight min 0.3", trimTextRight({ start: 1, end: 1.2 }, -3).end, 1.3);
 
+// ── audio-extract: WAV encoder (بدون DOM — فقط ساختار AudioBuffer) ──
+import { audioBufferToWav } from "../src/lib/video/audio-extract";
+const fakeBuf = {
+  numberOfChannels: 2,
+  sampleRate: 44100,
+  length: 1000,
+  getChannelData: (c: number) => new Float32Array(1000).fill(c === 0 ? 0.5 : -0.25),
+} as unknown as AudioBuffer;
+const wav = audioBufferToWav(fakeBuf);
+const wab = await wav.arrayBuffer();
+const wv = new DataView(wab);
+const wstr = (o: number, n: number) => String.fromCharCode(...new Uint8Array(wab, o, n));
+eq("wav RIFF magic", wstr(0, 4), "RIFF");
+eq("wav WAVE magic", wstr(8, 4), "WAVE");
+eq("wav channels", wv.getUint16(22, true), 2);
+eq("wav sampleRate", wv.getUint32(24, true), 44100);
+eq("wav dataSize", wv.getUint32(40, true), 1000 * 2 * 2);
+eq("wav riffSize", wv.getUint32(4, true), 36 + 1000 * 2 * 2);
+eq("wav clamp >1", new Int16Array(wab, 44, 1)[0], 32767);
+eq("wav clamp <-1", new Int16Array(wab, 46, 1)[0], -32768);
+
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

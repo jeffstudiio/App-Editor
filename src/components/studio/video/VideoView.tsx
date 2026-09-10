@@ -8,6 +8,7 @@ import {
   Repeat, Trash2, Copy, Type, Music4, Captions, Sparkles, MapPin,
   Layers, Crop, Settings2, Wand2, AudioWaveform, Vibrate, LayoutTemplate,
   Smile, AudioLines, Frame, TrendingUp, SkipForward, Save, WandSparkles, Diamond,
+  ClipboardCopy, ClipboardPaste, Unplug,
 } from "lucide-react";
 import {
   EditorEngine, analyzeStabilization, buildReverse,
@@ -15,7 +16,7 @@ import {
 import {
   ASPECTS, DEFAULT_CHROMA, DEFAULT_FILTER, DEFAULT_TRANSFORM,
   clipDur, clipStart, emptyProject, totalDur, uid, normalizeProject,
-  type AspectId, type Clip, type MediaAsset, type Project, type TextItem,
+  type AspectId, type AudioItem, type Clip, type MediaAsset, type OverlayItem, type Project, type TextItem,
 } from "@/lib/video/types";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -37,8 +38,14 @@ import {
   loadAutosave,
   loadAutosaveAssets,
   putAutosaveBlob,
+  saveClipboard,
+  loadClipboard,
+  loadClipboardAssets,
+  putClipboardBlob,
+  hasClipboard,
   type AutosaveRecord,
 } from "@/lib/projects-db";
+import { extractAudio } from "@/lib/video/audio-extract";
 import {
   snapPoints,
   snapTime,
@@ -115,6 +122,7 @@ export function VideoView() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [clipHasContent, setClipHasContent] = useState(false);
 
   // engine lifecycle
   useEffect(() => {
@@ -139,6 +147,7 @@ export function VideoView() {
 
   // one-time handoff: pending template / pending project / bank template from other views
   useEffect(() => {
+    hasClipboard().then(setClipHasContent).catch(() => {});
     const pb = consumePendingBank();
     if (pb) {
       buildProjectFromBank(pb)
@@ -625,7 +634,8 @@ export function VideoView() {
     mutate((p) => {
       if (selection.type === "clip") {
         const idx = p.clips.findIndex((c) => c.id === selection.id);
-        if (idx >= 0) p.clips.splice(idx + 1, 0, { ...p.clips[idx], id: uid("cl") });
+        // فریم‌های معکوس (blob URL) بین کلیپ‌ها به‌اشتراک گذاشته نمی‌شوند تا آزادسازی حافظه سالم بماند
+        if (idx >= 0) p.clips.splice(idx + 1, 0, { ...p.clips[idx], id: uid("cl"), reverse: undefined });
       } else if (selection.type === "text") {
         const idx = p.texts.findIndex((t) => t.id === selection.id);
         if (idx >= 0) p.texts.splice(idx + 1, 0, { ...p.texts[idx], id: uid("tx") });
@@ -646,6 +656,8 @@ export function VideoView() {
       if (selection.type === "clip") {
         const idx = p.clips.findIndex((c) => c.id === selection.id);
         if (idx >= 0) {
+          const rev = p.clips[idx].reverse;
+          if (rev) for (const u of rev.frames) URL.revokeObjectURL(u); // فیکس نشتی objectURL فریم‌های معکوس
           const removed = clipDur(p.clips[idx]);
           const removedStart = clipStart(p, selection.id);
           const removedEnd = removedStart + removed;
@@ -674,9 +686,133 @@ export function VideoView() {
     toast.success(`نشانگر روی ${fmtTime(time)} ثبت شد 📍`);
   }, [mutate, time]);
 
+  // ── clipboard واقعی (IDB) — کپی/چسباندن حتی بین پروژه‌ها ──
+  const copySelectedToClipboard = useCallback(async () => {
+    if (!selection) return toast.error("اول یک آیتم را انتخاب کن");
+    try {
+      let item: unknown = null;
+      let name = "";
+      const assetIds: string[] = [];
+      if (selection.type === "clip") {
+        const c = project.clips.find((x) => x.id === selection.id);
+        if (!c) return;
+        const { reverse: _rev, ...rest } = c; // فریم‌های معکوس blob URL هستند — قابل انتقال نیستند
+        item = rest;
+        name = c.name;
+        assetIds.push(c.assetId);
+      } else if (selection.type === "overlay") {
+        const o = project.overlays.find((x) => x.id === selection.id);
+        if (!o) return;
+        item = o;
+        name = o.name;
+        assetIds.push(o.assetId);
+      } else if (selection.type === "text") {
+        const t = project.texts.find((x) => x.id === selection.id);
+        if (!t) return;
+        item = t;
+        name = t.text.slice(0, 12);
+      } else {
+        const a = project.audios.find((x) => x.id === selection.id);
+        if (!a) return;
+        item = a;
+        name = a.name;
+        assetIds.push(a.assetId);
+      }
+      for (const id of assetIds) {
+        const asset = assetsRef.current.get(id);
+        if (!asset) continue;
+        const blob = await (await fetch(asset.url)).blob();
+        await putClipboardBlob(id, blob, blob.type || "application/octet-stream");
+      }
+      await saveClipboard({ kind: selection.type, item, name, savedAt: Date.now(), assetIds });
+      setClipHasContent(true);
+      toast.success("رونوشت در کلیپ‌بورد ذخیره شد — حتی در پروژهٔ دیگر قابل چسباندن است");
+    } catch {
+      toast.error("کپی در کلیپ‌بورد ناموفق بود");
+    }
+  }, [project, selection]);
+
+  const pasteFromClipboard = useCallback(async () => {
+    try {
+      const rec = await loadClipboard();
+      if (!rec) return toast.error("کلیپ‌بورد خالی است");
+      const blobs = await loadClipboardAssets();
+      const idMap = new Map<string, string>();
+      for (const b of blobs) {
+        if (assetsRef.current.has(b.id)) {
+          idMap.set(b.id, b.id);
+          continue;
+        }
+        const f = new File([b.blob], `paste-${b.id.slice(-4)}`, { type: b.type });
+        const asset = await importFile(f);
+        if (asset) idMap.set(b.id, asset.id);
+      }
+      const item = JSON.parse(JSON.stringify(rec.item)) as Record<string, unknown> & { assetId?: string };
+      const remapped = item.assetId ? (idMap.get(item.assetId) ?? item.assetId) : undefined;
+      mutate((p) => {
+        if (rec.kind === "clip") {
+          p.clips.push({ ...(item as unknown as Clip), id: uid("cl"), assetId: remapped ?? "", reverse: undefined } as Clip);
+        } else if (rec.kind === "overlay") {
+          p.overlays.push({ ...(item as unknown as OverlayItem), id: uid("ov"), assetId: remapped ?? "", start: Math.max(0, timeRef.current) } as OverlayItem);
+        } else if (rec.kind === "text") {
+          const len = Math.max(0.3, (item.end as number) - (item.start as number));
+          p.texts.push({ ...(item as unknown as TextItem), id: uid("tx"), start: Math.max(0, timeRef.current), end: Math.max(0, timeRef.current) + len } as TextItem);
+        } else {
+          p.audios.push({ ...(item as unknown as AudioItem), id: uid("au"), assetId: remapped ?? "", start: Math.max(0, timeRef.current) } as AudioItem);
+        }
+      });
+      toast.success(`«${rec.name}» چسبانده شد`);
+    } catch {
+      toast.error("چسباندن ناموفق بود");
+    }
+  }, [importFile, mutate]);
+
+  // ── detach audio واقعی (decode → offline render → WAV) ──
+  const detachAudioSelected = useCallback(async () => {
+    if (!selectedClip) return toast.error("اول یک کلیپ انتخاب کن");
+    if (selectedClip.kind !== "video") return toast.error("جدا کردن صدا فقط برای کلیپ ویدئویی است");
+    const asset = assetsRef.current.get(selectedClip.assetId);
+    if (!asset) return toast.error("فایل ویدئو پیدا نشد");
+    setBusy({ label: "جدا کردن صدا…", progress: 0 });
+    try {
+      const { blob, duration } = await extractAudio(
+        asset.url, selectedClip.in, selectedClip.out, selectedClip.speed,
+        (pr) => setBusy({ label: "جدا کردن صدا…", progress: pr })
+      );
+      const file = new File([blob], "detached.wav", { type: "audio/wav" });
+      const audioAsset = await importFile(file);
+      if (!audioAsset) throw new Error("no asset");
+      const st = clipStart(project, selectedClip.id);
+      mutate((p) => {
+        const c = p.clips.find((x) => x.id === selectedClip.id);
+        if (!c) return;
+        c.muted = true;
+        p.audios.push({
+          id: uid("au"),
+          assetId: audioAsset.id,
+          name: `${c.name} (صدا)`.slice(0, 24),
+          start: st,
+          in: 0,
+          out: duration,
+          srcDur: duration,
+          volume: c.volume,
+          fadeIn: c.fadeIn,
+          fadeOut: c.fadeOut,
+          effect: "none",
+          duckCaptions: false,
+        });
+      });
+      toast.success("صدا جدا شد — تراک مستقل، با volume/fade خودش 🎙️");
+    } catch {
+      toast.error("جدا کردن صدا ناموفق بود");
+    } finally {
+      setBusy(null);
+    }
+  }, [importFile, mutate, project, selectedClip]);
+
   // ── keyboard shortcuts (§67 مشخصات) ──
-  const shortcutsRef = useRef({ togglePlay, splitSelected, deleteSelected, duplicateSelected, undo, redo, seek, setSheet, selection });
-  shortcutsRef.current = { togglePlay, splitSelected, deleteSelected, duplicateSelected, undo, redo, seek, setSheet, selection };
+  const shortcutsRef = useRef({ togglePlay, splitSelected, deleteSelected, duplicateSelected, undo, redo, seek, setSheet, selection, copySelectedToClipboard, pasteFromClipboard });
+  shortcutsRef.current = { togglePlay, splitSelected, deleteSelected, duplicateSelected, undo, redo, seek, setSheet, selection, copySelectedToClipboard, pasteFromClipboard };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -701,6 +837,16 @@ export function VideoView() {
       if (mod && e.key.toLowerCase() === "d") {
         e.preventDefault();
         s.duplicateSelected();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        void s.copySelectedToClipboard();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        void s.pasteFromClipboard();
         return;
       }
       if (mod) return;
@@ -1121,6 +1267,7 @@ export function VideoView() {
   const isLastClip = !!selectedClip && project.clips[project.clips.length - 1]?.id === selectedClip.id;
   const mainTools = [
     { icon: Plus, label: "رسانه", onClick: () => setSheet("media") },
+    ...(clipHasContent ? [{ icon: ClipboardPaste, label: "چسباندن", onClick: () => void pasteFromClipboard() }] : []),
     { icon: Type, label: "متن", onClick: () => { const id = addTextItem(); setSelection({ type: "text", id }); setSheet("text"); } },
     { icon: Smile, label: "استیکر", onClick: () => setSheet("stickers") },
     { icon: Music4, label: "موزیک/TTS", onClick: () => setSheet("audio") },
@@ -1151,7 +1298,9 @@ export function VideoView() {
         { icon: SkipForward, label: "ادامه", onClick: () => setSheet("extend"), accent: isLastClip } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
         { icon: Snowflake, label: "فریز", onClick: freezeSelected },
         { icon: Repeat, label: "معکوس", onClick: reverseSelected },
-        { icon: Copy, label: "کپی", onClick: duplicateSelected },
+        { icon: Unplug, label: "جدا صدا", onClick: () => void detachAudioSelected() },
+        { icon: ClipboardCopy, label: "رونوشت", onClick: () => void copySelectedToClipboard() },
+        { icon: Copy, label: "تکرار", onClick: duplicateSelected },
         { icon: Trash2, label: "حذف", onClick: deleteSelected, danger: true },
       ]
     : selectedOverlay
@@ -1162,20 +1311,23 @@ export function VideoView() {
           { icon: Diamond, label: selectedOverlay?.kf ? "کی‌فریم ✓" : "کی‌فریم", onClick: () => setSheet("kf"), accent: !!selectedOverlay?.kf } as { icon: React.ElementType; label: string; onClick: () => void; accent?: boolean },
           { icon: FlipHorizontal2, label: "چرخش", onClick: () => setSheet("clip-motion") },
           { icon: Layers, label: "کروما", onClick: () => setSheet("chroma") },
-          { icon: Copy, label: "کپی", onClick: duplicateSelected },
+          { icon: ClipboardCopy, label: "رونوشت", onClick: () => void copySelectedToClipboard() },
+          { icon: Copy, label: "تکرار", onClick: duplicateSelected },
           { icon: Trash2, label: "حذف", onClick: deleteSelected, danger: true },
         ]
       : selectedText
         ? [
             { icon: Type, label: "ویرایش", onClick: () => setSheet("text") },
-            { icon: Copy, label: "کپی", onClick: duplicateSelected },
+            { icon: ClipboardCopy, label: "رونوشت", onClick: () => void copySelectedToClipboard() },
+            { icon: Copy, label: "تکرار", onClick: duplicateSelected },
             { icon: Trash2, label: "حذف", onClick: deleteSelected, danger: true },
           ]
         : selectedAudio
           ? [
               { icon: Volume2, label: "صدا", onClick: () => setSheet("audio") },
               { icon: Gauge, label: "افکت", onClick: () => setSheet("audio") },
-              { icon: Copy, label: "کپی", onClick: duplicateSelected },
+              { icon: ClipboardCopy, label: "رونوشت", onClick: () => void copySelectedToClipboard() },
+              { icon: Copy, label: "تکرار", onClick: duplicateSelected },
               { icon: Trash2, label: "حذف", onClick: deleteSelected, danger: true },
             ]
           : mainTools;

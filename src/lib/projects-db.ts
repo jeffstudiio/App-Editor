@@ -3,10 +3,11 @@
 // cover thumbnail, so a project can be re-opened even after a full reload.
 
 const DB_NAME = "creative-studio-projects";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_META = "projects"; // {id, name, createdAt, updatedAt, aspect, thumb, clips, ...project}
 const STORE_BLOBS = "blobs"; // {key: `${projectId}:${assetId}`, blob, type}
 const STORE_AUTOSAVE = "autosave"; // {slot, projectId, name, project, savedAt, assetIds}
+const STORE_CLIPBOARD = "clipboard"; // {slot, kind, item, name, savedAt, assetIds}
 
 /** نسخهٔ اسکیمای Project — برای مایگریشن آینده (normalizeProject در types.ts) */
 export const PROJECT_SCHEMA_VERSION = 2;
@@ -30,6 +31,7 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_META)) db.createObjectStore(STORE_META, { keyPath: "id" });
       if (!db.objectStoreNames.contains(STORE_BLOBS)) db.createObjectStore(STORE_BLOBS, { keyPath: "key" });
       if (!db.objectStoreNames.contains(STORE_AUTOSAVE)) db.createObjectStore(STORE_AUTOSAVE, { keyPath: "slot" });
+      if (!db.objectStoreNames.contains(STORE_CLIPBOARD)) db.createObjectStore(STORE_CLIPBOARD, { keyPath: "slot" });
     };
     req.onsuccess = () => res(req.result);
     req.onerror = () => rej(req.error ?? new Error("IndexedDB open failed"));
@@ -271,6 +273,65 @@ export async function loadAutosaveAssets(): Promise<{ id: string; blob: Blob; ty
     if (!key.startsWith(AUTO_BLOB_PREFIX)) continue;
     const rec = (await reqAs(store.get(k))) as { blob: Blob; type?: string };
     out.push({ id: key.slice(AUTO_BLOB_PREFIX.length), blob: rec.blob, type: rec.type || "application/octet-stream" });
+  }
+  db.close();
+  return out;
+}
+
+// ── Clipboard واقعی — کپی/چسباندن آیتم‌ها حتی بین پروژه‌ها و پس از reload ──
+
+export interface ClipboardRecord {
+  slot: string;
+  kind: "clip" | "overlay" | "text" | "audio";
+  item: unknown; // JSON آیتم (بدون blob URL)
+  name: string;
+  savedAt: number;
+  assetIds: string[];
+}
+
+const CLIPBOARD_SLOT = "main";
+const CLIP_BLOB_PREFIX = "clip:";
+
+export async function saveClipboard(rec: Omit<ClipboardRecord, "slot">): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_CLIPBOARD, "readwrite");
+  tx.objectStore(STORE_CLIPBOARD).put({ ...rec, slot: CLIPBOARD_SLOT });
+  await txDone(tx);
+  db.close();
+}
+
+export async function loadClipboard(): Promise<ClipboardRecord | null> {
+  const db = await openDb();
+  const rec = (await reqAs(
+    db.transaction(STORE_CLIPBOARD, "readonly").objectStore(STORE_CLIPBOARD).get(CLIPBOARD_SLOT) as IDBRequest<any>
+  )) as ClipboardRecord | undefined;
+  db.close();
+  return rec ?? null;
+}
+
+export async function hasClipboard(): Promise<boolean> {
+  return (await loadClipboard()) !== null;
+}
+
+export async function putClipboardBlob(assetId: string, blob: Blob, type: string): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_BLOBS, "readwrite");
+  tx.objectStore(STORE_BLOBS).put({ key: `${CLIP_BLOB_PREFIX}${assetId}`, blob, type });
+  await txDone(tx);
+  db.close();
+}
+
+export async function loadClipboardAssets(): Promise<{ id: string; blob: Blob; type: string }[]> {
+  const db = await openDb();
+  const tx = db.transaction(STORE_BLOBS, "readonly");
+  const store = tx.objectStore(STORE_BLOBS);
+  const keys: IDBValidKey[] = await reqAs(store.getAllKeys());
+  const out: { id: string; blob: Blob; type: string }[] = [];
+  for (const k of keys) {
+    const key = String(k);
+    if (!key.startsWith(CLIP_BLOB_PREFIX)) continue;
+    const rec = (await reqAs(store.get(k))) as { blob: Blob; type?: string };
+    out.push({ id: key.slice(CLIP_BLOB_PREFIX.length), blob: rec.blob, type: rec.type || "application/octet-stream" });
   }
   db.close();
   return out;
