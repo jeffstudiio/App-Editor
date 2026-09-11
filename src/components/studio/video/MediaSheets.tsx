@@ -10,6 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Film, Image as ImageIcon, AudioLines, Loader2, Trash2, Wand2, Drum } from "lucide-react";
+import { aiEdgeTtsBlob } from "@/lib/ai/client/gateway";
 import {
   EDGE_VOICES, VOICE_EFFECTS, uid,
   type TextItem, type VoiceEffect,
@@ -275,16 +276,7 @@ export function AudioSheet({ ctx }: { ctx: EditorCtx }) {
     setLoading(true);
     ctx.setBusy({ label: "تولید صدای عصبی گوینده…" });
     try {
-      const res = await fetch("/api/edge-tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: ttsText.trim(), voice, rate: speed }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "خطا در تولید صدا");
-      }
-      const blob = await res.blob();
+      const blob = await aiEdgeTtsBlob(ttsText.trim(), voice, speed);
       const file = new File([blob], `گوینده-${Date.now()}.mp3`, { type: "audio/mpeg" });
       const asset = await ctx.importFile(file);
       if (!asset) throw new Error("asset failed");

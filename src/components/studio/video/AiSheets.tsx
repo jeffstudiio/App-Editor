@@ -23,6 +23,8 @@ import { exportProjectAdvanced, supportsAdvancedExport } from "@/lib/video/expor
 import type { EditorCtx } from "./ctx";
 import { presetToCaptionPatch, captionTextItem } from "./caption-utils";
 import { SectionTitle, SliderRow } from "./ClipSheets";
+import { aiTranslate, aiEditPlan, aiScriptScenes, aiImageGen, aiZaiTtsBlob, aiErrorMessage } from "@/lib/ai/client/gateway";
+import { byoCreds } from "@/lib/ai/client/settings";
 
 // ── helpers ──
 
@@ -123,14 +125,9 @@ export function CaptionSheet({ ctx }: { ctx: EditorCtx }) {
     ctx.setBusy({ label: "اصلاح هوشمند متن‌ها با AI…" });
     try {
       const sorted = [...captions].sort((a, b) => a.start - b.start);
-      const res = await fetch("/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "fix", target: "fa", segments: sorted.map((c) => c.text) }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "خطا");
-      const fixed = j.segments as string[];
+      const j = await aiTranslate({ mode: "fix", target: "fa", segments: sorted.map((c) => c.text), ...byoCreds() });
+      if (j.error || !j.segments) throw new Error(j.error || "خطا");
+      const fixed = j.segments;
       ctx.mutate((p) => {
         for (let i = 0; i < sorted.length; i++) {
           const t = p.texts.find((x) => x.id === sorted[i].id);
@@ -294,17 +291,13 @@ export function AiEditSheet({ ctx }: { ctx: EditorCtx }) {
     ctx.setBusy({ label: "دستیار ادیت در حال تحلیل…" });
     try {
       const total = ctx.project.clips.reduce((a, c) => a + clipDur(c), 0);
-      const res = await fetch("/api/edit-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brief,
-          context: `ابعاد ${ctx.project.aspect}، ${ctx.project.clips.length} کلیپ، مجموعاً ${Math.round(total)} ثانیه`,
-        }),
+      const j = await aiEditPlan({
+        brief,
+        context: `ابعاد ${ctx.project.aspect}، ${ctx.project.clips.length} کلیپ، مجموعاً ${Math.round(total)} ثانیه`,
+        ...byoCreds(),
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "خطا");
-      setPlan(j.plan);
+      if (j.error || !j.plan) throw new Error(j.error || "خطا");
+      setPlan(j.plan as unknown as EditPlan);
     } catch (e) {
       ctx.toast(e instanceof Error ? e.message : "تحلیل ناموفق بود", "error");
     } finally {
@@ -420,13 +413,8 @@ export function AutoVideoSheet({ ctx }: { ctx: EditorCtx }) {
     setLoading(true);
     try {
       ctx.setBusy({ label: "AI در حال دکوپاژ سناریو…", progress: 0.02 });
-      const res = await fetch("/api/script-scenes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script, sceneCount, tone }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "خطا در ساخت صحنه‌ها");
+      const j = await aiScriptScenes({ script, sceneCount, tone, ...byoCreds() });
+      if (j.error || !j.scenes) throw new Error(j.error || "خطا در ساخت صحنه‌ها");
       const scenes: { text: string; imagePrompt: string; dur: number }[] = j.scenes;
 
       // clear old content
@@ -445,7 +433,7 @@ export function AutoVideoSheet({ ctx }: { ctx: EditorCtx }) {
       if (j.title) {
         ctx.mutate((p) =>
           p.texts.push({
-            ...(captionPatch(j.title, 0, 2.5)),
+            ...(captionPatch(j.title ?? "", 0, 2.5)),
             isCaption: false,
             karaoke: false,
             font: "Lalezar",
@@ -464,13 +452,8 @@ export function AutoVideoSheet({ ctx }: { ctx: EditorCtx }) {
 
         let asset: MediaAsset | null = null;
         try {
-          const ir = await fetch("/api/image-gen", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: sc.imagePrompt, size: imgSize }),
-          });
-          const ij = await ir.json();
-          if (ir.ok && ij.image_base64) {
+          const ij = await aiImageGen({ prompt: sc.imagePrompt, size: imgSize, ...byoCreds() });
+          if (ij.image_base64) {
             const blob = b64ToBlob(ij.image_base64, "image/png");
             asset = await ctx.importFile(new File([blob], `scene-${i + 1}.png`, { type: "image/png" }));
           }
@@ -487,13 +470,7 @@ export function AutoVideoSheet({ ctx }: { ctx: EditorCtx }) {
 
         if (withTts && sc.text.trim()) {
           try {
-            const tr = await fetch("/api/tts", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: sc.text, voice: "tongtong", speed: 1 }),
-            });
-            if (tr.ok) {
-              const blob = await tr.blob();
+            const blob = await aiZaiTtsBlob(sc.text, "tongtong", 1);
               const a = await ctx.importFile(new File([blob], `tts-${i + 1}.wav`, { type: "audio/wav" }));
               if (a) {
                 ctx.mutate((p) =>
@@ -514,9 +491,8 @@ export function AutoVideoSheet({ ctx }: { ctx: EditorCtx }) {
                   })
                 );
               }
-            }
           } catch {
-            // TTS optional
+            // TTS optional — گویندهٔ پلتفرم فقط روی میزبانی سروری است
           }
         }
         t0 += sc.dur;

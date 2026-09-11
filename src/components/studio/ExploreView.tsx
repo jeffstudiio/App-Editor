@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Heart, X, Copy, Download, ImageOff, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { hostingMode } from "@/lib/ai/client/gateway";
 import { EXPLORE_CATEGORIES, type ExploreImage } from "@/lib/studio-data";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,6 +51,10 @@ export function ExploreView() {
       else {
         params.set("category", category);
         if (offset) params.set("offset", String(offset));
+      }
+      const mode = await hostingMode();
+      if (mode === "static") {
+        throw new Error("کشف تصویر به سرور نیاز دارد و در نسخهٔ استاتیک در دسترس نیست — بقیهٔ ابزارها فعال‌اند");
       }
       const res = await fetch(`/api/explore?${params.toString()}`);
       const data = await res.json();

@@ -12,6 +12,7 @@ import {
 import { PERSONAS, type PersonaId } from "@/lib/studio-data";
 import { transcribeMedia } from "@/lib/video/asr-client";
 import { consumeAssistantPrefill } from "@/lib/video/transfer";
+import { aiAssistant, aiEdgeTtsBlob, aiGeminiModels, aiOpenRouterModels, aiErrorMessage } from "@/lib/ai/client/gateway";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -172,13 +173,7 @@ export function AssistantView() {
     try {
       audioRef.current?.pause();
       setVoiceState("speaking");
-      const res = await fetch("/api/edge-tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.slice(0, 900), voice: "fa-IR-DilaraNeural" }),
-      });
-      if (!res.ok) throw new Error("tts");
-      const blob = await res.blob();
+      const blob = await aiEdgeTtsBlob(text.slice(0, 900), "fa-IR-DilaraNeural", 1);
       const audio = new Audio(URL.createObjectURL(blob));
       audioRef.current = audio;
       audio.onended = () => setVoiceState("idle");
@@ -212,21 +207,16 @@ export function AssistantView() {
       setLoading(true);
 
       try {
-        const res = await fetch("/api/assistant", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            personaId,
-            messages: history,
-            ...(prov === "gemini"
-              ? { provider: "gemini", apiKey: cfg?.apiKey ?? "", model: cfg?.model ?? "" }
-              : cfg
-                ? { provider: prov, apiKey: cfg.apiKey, model: cfg.model }
-                : {}),
-          }),
+        const data = await aiAssistant({
+          personaId,
+          messages: history,
+          ...(prov === "gemini"
+            ? { provider: "gemini", apiKey: cfg?.apiKey ?? "", model: cfg?.model ?? "" }
+            : cfg
+              ? { provider: prov, apiKey: cfg.apiKey, model: cfg.model }
+              : {}),
         });
-        const data = await res.json();
-        if (!res.ok || !data?.content) {
+        if (!data?.content) {
           throw new Error(data?.error || "خطای نامشخص");
         }
         if (data.notice) toast.warning(data.notice);
@@ -266,12 +256,7 @@ export function AssistantView() {
     setCheckingOr(true);
     setOrError("");
     try {
-      const res = await fetch("/api/openrouter/models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: key }),
-      });
-      const data = await res.json();
+      const data = await aiOpenRouterModels(key);
       if (!data?.ok) throw new Error(data?.error || "خطای نامشخص");
       const list: OrModel[] = Array.isArray(data.models) ? data.models : [];
       setOrModels(list);
@@ -288,12 +273,7 @@ export function AssistantView() {
     setCheckingGem(true);
     setGemError("");
     try {
-      const res = await fetch("/api/gemini/models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: key }),
-      });
-      const data = await res.json();
+      const data = await aiGeminiModels(key);
       setGemServerKey(Boolean(data?.serverKey));
       if (!data?.ok) throw new Error(data?.error || "خطای نامشخص");
       const list: OrModel[] = Array.isArray(data.models) ? data.models : [];

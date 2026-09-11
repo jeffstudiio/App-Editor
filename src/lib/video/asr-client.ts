@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { alignAllSegments, type WordTiming } from "./word-align";
+import { aiTranscribe, aiErrorMessage } from "@/lib/ai/client/gateway";
 
 export interface SpeechSegment {
   start: number;
@@ -216,13 +217,8 @@ export async function transcribeMedia(
     const seg = segments[i];
     onProgress({ phase: "transcribe", done: i, total: segments.length });
     const b64 = await sliceToWavBase64(data, sampleRate, seg.start, seg.end);
-    const res = await fetch("/api/transcribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ audio_base64: b64 }),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.text) continue;
+    const json = await aiTranscribe({ audio_base64: b64 });
+    if (json.error || !json.text) continue;
     const text = String(json.text).trim();
     if (text) out.push({ ...seg, text });
   }

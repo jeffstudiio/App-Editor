@@ -17,21 +17,8 @@ import type {
 
 const CAPABILITIES: AICapability[] = ["text_to_speech"];
 
-export const EDGE_VOICES = new Set([
-  "fa-IR-DilaraNeural",
-  "fa-IR-FaridNeural",
-  "en-US-AriaNeural",
-  "en-US-GuyNeural",
-  "en-GB-SoniaNeural",
-  "ar-SA-ZariyahNeural",
-  "ar-SA-HamedNeural",
-  "tr-TR-EmelNeural",
-  "tr-TR-AhmetNeural",
-  "zh-CN-XiaoxiaoNeural",
-  "zh-CN-YunxiNeural",
-  "es-ES-ElviraNeural",
-  "es-ES-AlvaroNeural",
-]);
+export { EDGE_VOICE_IDS as EDGE_VOICES } from "../../ai/shared/edge-voices";
+import { EDGE_VOICE_IDS } from "../../ai/shared/edge-voices";
 
 function escapeXml(s: string): string {
   return s
@@ -54,7 +41,7 @@ export class EdgeTtsProvider implements AIProvider {
     if (cap !== "text_to_speech") return false;
     if (req?.capability === "text_to_speech") {
       const v = req.voice ?? "fa-IR-DilaraNeural";
-      return EDGE_VOICES.has(v);
+      return EDGE_VOICE_IDS.has(v);
     }
     return true;
   }

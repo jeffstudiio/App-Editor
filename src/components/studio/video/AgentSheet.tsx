@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { getPack, pickMusicMood } from "@/lib/creative-packs";
 import { withBase } from "@/lib/base-path";
 import { byoCreds } from "@/lib/ai/client/settings";
+import { aiPlan, aiImageGen, aiEdgeTtsBlob, aiErrorMessage } from "@/lib/ai/client/gateway";
 import { describeOperationFa, CommandParams } from "@/lib/ai/agent/commands";
 import { validatePlan, type AIPlan } from "@/lib/ai/agent/plan-schema";
 import { buildSnapshot, applySyncPlan, insertAudioAsset, insertImageAsset, type CommandResult } from "@/lib/ai/agent/executor";
@@ -19,14 +20,6 @@ import { renderSfx } from "@/lib/video/sfx";
 import type { EditorCtx } from "./ctx";
 
 const PACK = getPack("beauty");
-
-interface PlanResponse {
-  ok?: boolean;
-  plan?: AIPlan;
-  provider?: string;
-  error?: string;
-  issues?: string[];
-}
 
 interface SyncOutcome {
   tool: string;
@@ -58,13 +51,8 @@ export function AgentSheet({ ctx }: { ctx: EditorCtx }) {
     try {
       const creds = byoCreds();
       const snap = buildSnapshot(ctx.project, [...ctx.assets.values()]);
-      const res = await fetch("/api/ai/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction: text, snapshot: snap, pack: PACK?.id, ...creds }),
-      });
-      const j = (await res.json()) as PlanResponse;
-      if (!res.ok || !j.ok || !j.plan) {
+      const j = await aiPlan({ instruction: text, snapshot: snap, pack: PACK?.id, ...creds });
+      if (!j.ok || !j.plan) {
         setError(j.error ?? "برنامه‌سازی ناموفق بود.");
         if (j.issues?.length) setIssues(j.issues);
         return;
@@ -78,8 +66,8 @@ export function AgentSheet({ ctx }: { ctx: EditorCtx }) {
       }
       setPlan(v.plan);
       setProvider(j.provider ?? null);
-    } catch {
-      setError("ارتباط با عامل هوشمند برقرار نشد.");
+    } catch (err) {
+      setError(aiErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -108,13 +96,8 @@ export function AgentSheet({ ctx }: { ctx: EditorCtx }) {
       }
       if (op.tool === "generate_image") {
         const size = ctx.project.aspect === "16:9" ? "1344x768" : ctx.project.aspect === "1:1" ? "1024x1024" : "768x1344";
-        const res = await fetch("/api/image-gen", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: op.prompt, size, ...byoCreds() }),
-        });
-        const j = (await res.json()) as { image_base64?: string; error?: string };
-        if (!res.ok || !j.image_base64) {
+        const j = await aiImageGen({ prompt: String(op.prompt ?? ""), size, ...byoCreds() });
+        if (!j.image_base64) {
           return { tool: "generate_image", ok: false, message: j.error ?? "تولید تصویر ناموفق بود" };
         }
         const file = dataUrlToFile(j.image_base64, `ai-${Date.now()}.png`);
@@ -140,20 +123,15 @@ export function AgentSheet({ ctx }: { ctx: EditorCtx }) {
         return { tool: "generate_image", ok: true, message: "تصویر AI تولید و درج شد" };
       }
       if (op.tool === "generate_voice") {
-        const res = await fetch("/api/edge-tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: op.text, voice: op.voice || "fa-IR-DilaraNeural", rate: 1 }),
-        });
-        if (!res.ok) {
-          const j = (await res.json().catch(() => ({}))) as { error?: string };
-          return { tool: "generate_voice", ok: false, message: j.error ?? "گویندگی AI ناموفق بود" };
+        try {
+          const blob = await aiEdgeTtsBlob(String(op.text ?? ""), String(op.voice || "fa-IR-DilaraNeural"), 1);
+          const asset = await ctx.importFile(new File([blob], `voice-${Date.now()}.mp3`, { type: "audio/mpeg" }));
+          if (!asset) return { tool: "generate_voice", ok: false, message: "ورود صدا به پروژه ناموفق" };
+          ctx.mutate((p) => insertAudioAsset(p, asset, Number(op.at ?? 0), 1, true));
+          return { tool: "generate_voice", ok: true, message: "گویندگی اضافه شد" };
+        } catch (err) {
+          return { tool: "generate_voice", ok: false, message: aiErrorMessage(err) };
         }
-        const blob = await res.blob();
-        const asset = await ctx.importFile(new File([blob], `voice-${Date.now()}.mp3`, { type: "audio/mpeg" }));
-        if (!asset) return { tool: "generate_voice", ok: false, message: "ورود صدا به پروژه ناموفق" };
-        ctx.mutate((p) => insertAudioAsset(p, asset, Number(op.at ?? 0), 1, true));
-        return { tool: "generate_voice", ok: true, message: "گویندگی اضافه شد" };
       }
       return { tool: String(op.tool), ok: false, message: "سرویس این دستور تعریف نشده است" };
     } catch (err) {

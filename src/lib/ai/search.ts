@@ -9,6 +9,7 @@ import type { BankTemplate } from "@/lib/template-bank/schema";
 import { cosine, localEmbed, tokenize } from "@/lib/ai/core/local-embedding";
 import { getPack } from "@/lib/creative-packs";
 import { byoCreds } from "@/lib/ai/client/settings";
+import { aiEmbeddings } from "@/lib/ai/client/gateway";
 
 export function templateDoc(t: BankTemplate): string {
   return `${t.name} ${t.en} ${t.desc} ${t.cat} ${t.tags.join(" ")}`;
@@ -78,20 +79,9 @@ export async function semanticRerank(
   try {
     const creds = byoCreds();
     const docs = base.map(templateDoc).slice(0, 48);
-    const res = await fetch("/api/ai/embeddings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: expandQuery(query, packId), texts: docs, apiKey: creds.apiKey }),
-    });
-    if (!res.ok) return { results: base, provider: "local", error: "embeddings-unavailable" };
-    const j = (await res.json()) as {
-      ok?: boolean;
-      provider?: "jina" | "local";
-      queryVector?: number[] | null;
-      vectors?: number[][];
-    };
+    const j = await aiEmbeddings({ query: expandQuery(query, packId), texts: docs, apiKey: creds.apiKey });
     if (!j.ok || !j.queryVector || !j.vectors) {
-      return { results: base, provider: "local", error: "embeddings-invalid" };
+      return { results: base, provider: "local", error: j.error ? "embeddings-unavailable" : "embeddings-invalid" };
     }
     const ranked = base
       .map((t, i) => ({ t, s: cosine(j.queryVector!, j.vectors![i] ?? []) }))

@@ -59,7 +59,7 @@ export type AIRequest =
       apiKey?: string;
       keys?: ProviderKeyMap;
     }
-  | { capability: "speech_to_text"; audioBase64: string; model?: string; apiKey?: string; keys?: ProviderKeyMap }
+  | { capability: "speech_to_text"; audioBase64: string; audioMime?: string; model?: string; apiKey?: string; keys?: ProviderKeyMap }
   | { capability: "text_to_speech"; text: string; voice?: string; speed?: number; model?: string; apiKey?: string; keys?: ProviderKeyMap }
   | { capability: "embeddings"; texts: string[]; model?: string; apiKey?: string; keys?: ProviderKeyMap };
 

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { byoCreds } from "@/lib/ai/client/settings";
+import { aiStatus, aiVerifyProvider, type StatusApiResponse } from "@/lib/ai/client/gateway";
 
 interface ProviderStatus {
   id: string;
@@ -20,12 +21,7 @@ interface ProviderStatus {
   health: { state: string; detail?: string };
 }
 
-interface StatusResponse {
-  ok?: boolean;
-  providers?: ProviderStatus[];
-  localTools?: { id: string; name: string }[];
-  error?: string;
-}
+type StatusResponse = StatusApiResponse;
 
 const CAP_FA: Record<string, string> = {
   text_generation: "متن",
@@ -65,8 +61,8 @@ export function ProviderStatusPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/ai/status", { cache: "no-store" });
-      setData((await res.json()) as StatusResponse);
+      const j = await aiStatus();
+      setData(j.mode ? j : (j as StatusResponse));
     } catch {
       setData({ error: "status-unreachable" });
     } finally {
@@ -83,11 +79,8 @@ export function ProviderStatusPanel() {
     setVerifyNote(null);
     try {
       const creds = byoCreds();
-      const res = await fetch(`/api/ai/status?verify=${encodeURIComponent(id)}`, {
-        headers: creds.apiKey ? { "x-ai-key": creds.apiKey } : undefined,
-      });
-      const j = (await res.json()) as { ok?: boolean; health?: { state: string; detail?: string } };
-      const state = j.health?.state ?? "unknown";
+      const { health } = await aiVerifyProvider(id, creds.apiKey);
+      const state = health?.state ?? "unknown";
       setVerifyNote(`${id}: ${STATE_FA[state]?.label ?? state}`);
       void load();
     } catch {
@@ -116,8 +109,16 @@ export function ProviderStatusPanel() {
     <div className="space-y-2 rounded-2xl border border-border p-3">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-bold">ارائه‌دهنده‌های هوش مصنوعی</h4>
-        {verifyNote && <span className="text-[10px] text-muted-foreground">{verifyNote}</span>}
+        <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[9px] text-muted-foreground">
+          {data.mode === "static" ? "میزبانی استاتیک — اجرا در مرورگر" : "میزبانی سروری"}
+        </span>
       </div>
+      {verifyNote && <p className="text-[10px] text-muted-foreground">{verifyNote}</p>}
+      {data.mode === "static" && (
+        <p className="rounded-xl bg-muted/50 p-2 text-[10px] leading-5 text-muted-foreground">
+          این نسخه بدون سرور است: گویندگی عصبی (بدون کلید) و ابزارهای محلی همیشه فعال‌اند؛ متن/تصویر/گفتار با کلید خودت (Gemini یا OpenRouter از تنظیمات) مستقیم از مرورگر اجرا می‌شود.
+        </p>
+      )}
       <div className="space-y-1.5">
         {data.providers.map((p) => {
           const st = STATE_FA[p.health.state] ?? STATE_FA.unknown;

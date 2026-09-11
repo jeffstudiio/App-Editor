@@ -18,7 +18,7 @@ export const CAPABILITY_CHAIN: Record<AICapability, ProviderId[]> = {
   translation: ["zai", "gemini", "groq", "openrouter"],
   image_generation: ["zai", "gemini"],
   image_editing: ["zai", "gemini"],
-  speech_to_text: ["zai"],
+  speech_to_text: ["zai", "gemini"],
   text_to_speech: ["edge-tts", "zai"],
   embeddings: ["jina", "local"],
 };

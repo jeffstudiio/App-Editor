@@ -684,37 +684,18 @@ export function uid(prefix = "id"): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-4)}`;
 }
 
-// Neural TTS voices (Microsoft Edge engine) — real Persian voices supported
-export interface EdgeVoice {
-  id: string;
-  name: string;
-  lang: string;
-  gender: "f" | "m";
-}
+// Neural TTS voices (Microsoft Edge engine) — تک‌منبع در ai/shared/edge-voices
+export { EDGE_VOICES, EDGE_VOICE_IDS, type EdgeVoice } from "@/lib/ai/shared/edge-voices";
+import type { EdgeVoice } from "@/lib/ai/shared/edge-voices";
 
+/** Dubbing target languages (ASR source is auto-detected by the cloud engine). */
 export const EDGE_LANGS: { code: string; label: string }[] = [
-  { code: "fa", label: "فارسی 🇮🇷" },
-  { code: "en", label: "انگلیسی 🇬🇧" },
-  { code: "ar", label: "عربی 🇸🇦" },
-  { code: "tr", label: "ترکی 🇹🇷" },
-  { code: "zh", label: "چینی 🇨🇳" },
-  { code: "es", label: "اسپانیایی 🇪🇸" },
-];
-
-export const EDGE_VOICES: EdgeVoice[] = [
-  { id: "fa-IR-DilaraNeural", name: "دلا — زن", lang: "fa", gender: "f" },
-  { id: "fa-IR-FaridNeural", name: "فرید — مرد", lang: "fa", gender: "m" },
-  { id: "en-US-AriaNeural", name: "آریا — زن (آمریکایی)", lang: "en", gender: "f" },
-  { id: "en-US-GuyNeural", name: "گای — مرد (آمریکایی)", lang: "en", gender: "m" },
-  { id: "en-GB-SoniaNeural", name: "سونیا — زن (بریتانیایی)", lang: "en", gender: "f" },
-  { id: "ar-SA-ZariyahNeural", name: "زاریه — زن", lang: "ar", gender: "f" },
-  { id: "ar-SA-HamedNeural", name: "حامد — مرد", lang: "ar", gender: "m" },
-  { id: "tr-TR-EmelNeural", name: "امل — زن", lang: "tr", gender: "f" },
-  { id: "tr-TR-AhmetNeural", name: "احمد — مرد", lang: "tr", gender: "m" },
-  { id: "zh-CN-XiaoxiaoNeural", name: "شیائوشیاو — زن", lang: "zh", gender: "f" },
-  { id: "zh-CN-YunxiNeural", name: "یونشی — مرد", lang: "zh", gender: "m" },
-  { id: "es-ES-ElviraNeural", name: "الویرا — زن", lang: "es", gender: "f" },
-  { id: "es-ES-AlvaroNeural", name: "آلوارو — مرد", lang: "es", gender: "m" },
+  { code: "fa", label: "فارسی" },
+  { code: "en", label: "انگلیسی" },
+  { code: "ar", label: "عربی" },
+  { code: "tr", label: "ترکی" },
+  { code: "zh", label: "چینی" },
+  { code: "es", label: "اسپانیایی" },
 ];
 
 /** Dubbing target languages (ASR source is auto-detected by the cloud engine). */

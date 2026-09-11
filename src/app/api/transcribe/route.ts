@@ -1,11 +1,13 @@
 // ─────────────────────────────────────────────────────────────
-// POST /api/transcribe — ASR پلتفرم + سقف حجم (§36)
+// POST /api/transcribe — ASR از طریق Capability Router (§54)
+// زنجیره: zai (پلتفرم) → gemini (BYO/سرور) — سقف حجم حفظ شده
 // ─────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
+import { AIError } from "@/lib/ai/core/ai-errors";
 import { base64Bytes, readJsonWithLimit } from "@/lib/ai/server/route-helpers";
 import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
+import { aiServer, credsOf } from "@/lib/ai/server/registry";
 
 export const maxDuration = 120;
 
@@ -31,12 +33,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "فایل صوتی بزرگ‌تر از ۱۰ مگابایت است — بخش کوتاه‌تری بفرست." }, { status: 413 });
     }
 
-    const zai = await ZAI.create();
-    const response = await zai.audio.asr.create({ file_base64: audioBase64 });
-    const text = (response?.text ?? "").trim();
-
-    return NextResponse.json({ text });
+    const creds = credsOf(body.body ?? {});
+    const { router } = aiServer();
+    const result = await router.route(
+      "speech_to_text",
+      { capability: "speech_to_text", audioBase64, audioMime: "audio/wav", ...creds },
+      { prefer: body.body?.provider === "gemini" ? "gemini" : undefined },
+    );
+    if (result.output.kind !== "text" || !result.output.text.trim()) {
+      return NextResponse.json({ error: "تبدیل گفتار به متن ناموفق بود؛ بخش صوتی معتبر نیست." }, { status: 502 });
+    }
+    return NextResponse.json({ text: result.output.text.trim(), engine: result.provider.id });
   } catch (err) {
+    if (err instanceof AIError) {
+      return NextResponse.json({ error: err.userMessage }, { status: err.httpStatus });
+    }
     console.error("[transcribe] error:", err);
     return NextResponse.json(
       { error: "تبدیل گفتار به متن ناموفق بود؛ بخش صوتی معتبر نیست یا خیلی بزرگ است." },

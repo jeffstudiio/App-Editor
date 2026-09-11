@@ -13,6 +13,7 @@ import { Download, Film, Loader2, Palette, Megaphone, Sparkles, Trash2, Wand2 } 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { aiImageGen, aiAssistant } from "@/lib/ai/client/gateway";
 import { setPendingProject } from "@/lib/video/transfer";
 import { emptyProject, uid, DEFAULT_CHROMA, DEFAULT_FILTER, DEFAULT_TRANSFORM, type MediaAsset, type Project } from "@/lib/video/types";
 
@@ -120,18 +121,9 @@ export function DesignStudioView({ onNavigate }: { onNavigate: (v: ViewId) => vo
         if (s?.gemini?.apiKey) byoKey = String(s.gemini.apiKey);
       } catch {}
       const genOne = async () => {
-        const res = await fetch("/api/image-gen", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            engine === "gemini"
-              ? { prompt: full, size, engine: "gemini", apiKey: byoKey }
-              : { prompt: full, size, apiKey: byoKey },
-          ),
-        });
-        const j = await res.json();
-        if (!res.ok || !j.image_base64) throw new Error(j.error || "تولید تصویر ناموفق بود");
-        return j.image_base64 as string;
+        const j = await aiImageGen({ prompt: full, size, ...(engine === "gemini" ? { engine: "gemini" } : {}), apiKey: byoKey });
+        if (!j.image_base64) throw new Error(j.error || "تولید تصویر ناموفق بود");
+        return j.image_base64;
       };
       const outs: DesignResult[] = [];
       for (let i = 0; i < count; i++) {
@@ -176,14 +168,9 @@ export function DesignStudioView({ onNavigate }: { onNavigate: (v: ViewId) => vo
     try {
       const size = ASPECTS.find((a) => a.id === aspect)!.size;
       const full = `پوستر تبلیغاتی ${brand.tone} برای «${product.trim()}»${brand.name ? ` برند ${brand.name}` : ""}${brand.slogan ? ` با شعار «${brand.slogan}»` : ""}${audience ? `، مخاطب: ${audience}` : ""}، رنگ اصلی ${brand.color}، عکاسی تبلیغاتی حرفه‌ای، کامپوزیشن تمیز`;
-      const res = await fetch("/api/image-gen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: full, size }),
-      });
-      const j = await res.json();
-      if (!res.ok || !j.image_base64) throw new Error(j.error || "تولید پوستر ناموفق بود");
-      setResults((r) => [{ id: uid("ds"), url: b64ToBlobUrl(j.image_base64, "image/png"), prompt: full, engine: "پوستر برند" }, ...r].slice(0, 24));
+      const j = await aiImageGen({ prompt: full, size });
+      if (!j.image_base64) throw new Error(j.error || "تولید پوستر ناموفق بود");
+      setResults((r) => [{ id: uid("ds"), url: b64ToBlobUrl(j.image_base64!, "image/png"), prompt: full, engine: "پوستر برند" }, ...r].slice(0, 24));
       toast.success("پوستر تبلیغاتی ساخته شد 🎯");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ساخت پوستر ناموفق بود");
@@ -196,21 +183,16 @@ export function DesignStudioView({ onNavigate }: { onNavigate: (v: ViewId) => vo
     if (!product.trim()) return toast.error("محصولت را توصیف کن");
     setMBusy("caption");
     try {
-      const res = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personaId: "writer",
-          messages: [
-            {
-              role: "user",
-              content: `یک کپشن تبلیغاتی فارسی کوتاه (حداکثر ۳ جمله + ۳ هشتگ) برای محصول «${product.trim()}» بنویس. برند: ${brand.name || "نامشخص"}؛ لحن برند: ${brand.tone}؛ مخاطب: ${audience || "عموم"}. فقط کپشن را بده.`,
-            },
-          ],
-        }),
+      const j = await aiAssistant({
+        personaId: "writer",
+        messages: [
+          {
+            role: "user",
+            content: `یک کپشن تبلیغاتی فارسی کوتاه (حداکثر ۳ جمله + ۳ هشتگ) برای محصول «${product.trim()}» بنویس. برند: ${brand.name || "نامشخص"}؛ لحن برند: ${brand.tone}؛ مخاطب: ${audience || "عموم"}. فقط کپشن را بده.`,
+          },
+        ],
       });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "ساخت کپشن ناموفق بود");
+      if (!j.content) throw new Error(j.error || "ساخت کپشن ناموفق بود");
       setCaption(String(j.content || "").trim());
       toast.success("کپشن آماده شد ✍️");
     } catch (e) {

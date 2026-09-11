@@ -3,6 +3,7 @@
 // Photo retouch studio: manual adjustments + AI enhance
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { aiImageEdit } from "@/lib/ai/client/gateway";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Upload, Loader2, Download, Undo2, Wand2, Eye, RotateCcw } from "lucide-react";
@@ -196,13 +197,8 @@ export function RetouchView() {
         }
         engine = { engine: "gemini", apiKey: gemKey, model: gemModel };
       }
-      const res = await fetch("/api/image-edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: preset.prompt, image_base64: b64, size: "1024x1024", ...engine }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "خطا");
+      const j = await aiImageEdit({ prompt: preset.prompt, image_base64: b64, size: "1024x1024", ...engine });
+      if (j.error || !j.image_base64) throw new Error(j.error || "خطا");
       const img = new Image();
       img.src = `data:image/png;base64,${j.image_base64}`;
       await new Promise<void>((r, rej) => {

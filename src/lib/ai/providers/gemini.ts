@@ -24,6 +24,7 @@ const CAPABILITIES: AICapability[] = [
   "translation",
   "image_generation",
   "image_editing",
+  "speech_to_text",
 ];
 
 export class GeminiProvider implements AIProvider {
@@ -93,9 +94,44 @@ export class GeminiProvider implements AIProvider {
         if (!g.ok || !g.image_base64) throw new AIError("bad_response", { detail: g.message });
         return { kind: "image", imageBase64: g.image_base64, via: g.via } as AIOutput;
       }
+      case "speech_to_text":
+        return this.transcribe(key, req);
       default:
         throw new AIError("invalid_input", { detail: `gemini نمی‌تواند ${req.capability}` });
     }
+  }
+
+  /** speech_to_text — inline audio در generateContent (BYOK؛ روی استاتیک هم کار می‌کند) */
+  private async transcribe(key: string, req: Extract<AIRequest, { capability: "speech_to_text" }>): Promise<AIOutput> {
+    const model = req.model || MODELS.geminiText;
+    const mime = req.audioMime && /^audio\/[a-z0-9.+-]+$/i.test(req.audioMime) ? req.audioMime : "audio/wav";
+    const body: Record<string, unknown> = {
+      contents: [
+        {
+          parts: [
+            { text: "Transcribe the spoken words in this audio exactly as spoken. Reply with the transcript text only — no commentary, no timestamps. The audio may be Persian (fa) or any language." },
+            { inline_data: { mime_type: mime, data: req.audioBase64 } },
+          ],
+        },
+      ],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+    };
+    const r = await geminiFetch(
+      `${GEMINI_BASE}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+      { method: "POST", body: JSON.stringify(body), timeoutMs: 90_000, maxAttempts: 4, quotaWait: true },
+    );
+    if (!r.reachedGoogle) throw new AIError("region", { detail: "محدودیت منطقه‌ای گوگل" });
+    let j: { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] } } } = {};
+    try {
+      j = JSON.parse(r.bodyText);
+    } catch {
+      throw new AIError("bad_response", { detail: "پاسخ نامعتبر از Gemini" });
+    }
+    if (r.status !== 200) throw AIError.fromHttpStatus(r.status, String(j?.error?.message ?? "") || undefined);
+    const parts = j?.candidates?.[0]?.content?.parts;
+    const text = Array.isArray(parts) ? parts.map((p) => String(p?.text ?? "")).join("").trim() : "";
+    if (!text) throw new AIError("bad_response", { detail: "بازنویسی خالی از Gemini" });
+    return { kind: "text", text, via: r.via } as AIOutput;
   }
 
   private async chat(key: string, req: Extract<AIRequest, { capability: "text_generation" | "fast_text" | "translation" }>): Promise<AIOutput> {

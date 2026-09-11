@@ -2,22 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
 import { clientIp, rateLimit, RATE_PRESETS } from "@/lib/ai/server/rate-limit";
 import { readJsonWithLimit } from "@/lib/ai/server/route-helpers";
+import { EDIT_PLAN_SYSTEM } from "@/lib/ai/shared/prompts";
 
 export const maxDuration = 120;
-
-const SYSTEM = `تو «دستیار ادیت» هستی و برای یک ویرایشگر ویدئوی موبایلی (مشابه کپ‌کات) برنامه ادیت پیشنهاد می‌دهی.
-ویدئوی کاربر را بر اساس توضیحش تحلیل کن و یک JSON دقیق با این ساختار برگردان (فقط JSON، بدون توضیح اضافه):
-{
-  "title": "یک متن تیتر کوتاه و جذاب فارسی (حداکثر ۴۰ کاراکتر) برای اوّل ویدئو یا null",
-  "titleStart": 0.2,
-  "titleDur": 3,
-  "filterPresetId": "یکی از: none | cinema | warmglow | noir | faded | neon | clean | mint",
-  "captionPresetId": "یکی از: impact | neon | minimal | classic | lalezar",
-  "musicMood": "یک توصیف یک‌خطی فارسی از حس موزیک مناسب",
-  "tips": ["نکته اجرایی کوتاه ۱", "نکته ۲", "نکته ۳"],
-  "hookIdea": "ایده هوک ۳ ثانیه اول در یک جمله فارسی"
-}
-قواعد: لحن فارسی صمیمی-حرفه‌ای؛ مقادیر خارج از لیست مجاز نده؛ title اگر واقعاً مفید نبود null بده.`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,7 +31,7 @@ export async function POST(req: NextRequest) {
     for (let attempt = 0; attempt < 2; attempt++) {
       const completion = await zai.chat.completions.create({
         messages: [
-          { role: "assistant", content: SYSTEM },
+          { role: "assistant", content: EDIT_PLAN_SYSTEM },
           { role: "user", content: attempt === 0 ? userContent : `${userContent}\n(فقط JSON خام برگردان)` },
         ],
         thinking: { type: "disabled" },

@@ -7,6 +7,8 @@ import {
   type AspectId, type Clip, type MediaAsset, type Project, type TextItem,
 } from "./types";
 import { captionTextItem } from "@/components/studio/video/caption-utils";
+import { aiScriptScenes, aiImageGen, aiEdgeTtsBlob } from "@/lib/ai/client/gateway";
+import { byoCreds } from "@/lib/ai/client/settings";
 
 export interface AutoVidScene {
   text: string;
@@ -64,13 +66,8 @@ export interface AutoVidResult {
 export async function buildAutoVideo(opts: AutoVidOptions): Promise<AutoVidResult> {
   const prog = opts.onProgress ?? (() => {});
   prog({ phase: "script", done: 0, total: 1, label: "AI در حال دکوپاژ سناریو…" });
-  const res = await fetch("/api/script-scenes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ script: opts.script, sceneCount: opts.sceneCount, tone: opts.tone }),
-  });
-  const j = await res.json();
-  if (!res.ok) throw new Error(j.error || "خطا در ساخت صحنه‌ها");
+  const j = await aiScriptScenes({ script: opts.script, sceneCount: opts.sceneCount, tone: opts.tone, ...byoCreds() });
+  if (j.error || !j.scenes) throw new Error(j.error || "خطا در ساخت صحنه‌ها");
   const scenes: AutoVidScene[] = j.scenes;
   const title: string | null = j.title ?? null;
 
@@ -100,13 +97,8 @@ export async function buildAutoVideo(opts: AutoVidOptions): Promise<AutoVidResul
     prog({ phase: "image", done: i, total: scenes.length, label: `ساخت تصویر صحنه ${i + 1} از ${scenes.length}…` });
     let asset: MediaAsset | null = null;
     try {
-      const ir = await fetch("/api/image-gen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: sc.imagePrompt, size: imgSize }),
-      });
-      const ij = await ir.json();
-      if (ir.ok && ij.image_base64) {
+      const ij = await aiImageGen({ prompt: sc.imagePrompt, size: imgSize, ...byoCreds() });
+      if (ij.image_base64) {
         const blob = b64ToBlob(ij.image_base64, "image/png");
         const url = URL.createObjectURL(blob);
         asset = {
@@ -129,13 +121,7 @@ export async function buildAutoVideo(opts: AutoVidOptions): Promise<AutoVidResul
     if (opts.withTts && sc.text.trim()) {
       prog({ phase: "tts", done: i, total: scenes.length, label: `گوینده صحنه ${i + 1}…` });
       try {
-        const tr = await fetch("/api/edge-tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: sc.text, voice: opts.voice || "fa-IR-DilaraNeural", rate: 1 }),
-        });
-        if (tr.ok) {
-          const blob = await tr.blob();
+        const blob = await aiEdgeTtsBlob(sc.text, opts.voice || "fa-IR-DilaraNeural", 1);
           const url = URL.createObjectURL(blob);
           // probe duration
           const dur = await new Promise<number>((r) => {
@@ -170,7 +156,6 @@ export async function buildAutoVideo(opts: AutoVidOptions): Promise<AutoVidResul
             duckCaptions: false,
             fromTts: true,
           });
-        }
       } catch {
         // TTS optional
       }

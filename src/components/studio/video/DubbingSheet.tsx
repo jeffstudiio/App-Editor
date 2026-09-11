@@ -11,6 +11,8 @@ import {
 import { AudioWaveform, Loader2 } from "lucide-react";
 import { clipStart, DUB_LANGS, EDGE_LANGS, EDGE_VOICES, type TextItem } from "@/lib/video/types";
 import { transcribeMedia } from "@/lib/video/asr-client";
+import { aiEdgeTtsBlob, aiTranslate } from "@/lib/ai/client/gateway";
+import { byoCreds } from "@/lib/ai/client/settings";
 import { presetToCaptionPatch, captionTextItem } from "./caption-utils";
 import type { EditorCtx } from "./ctx";
 import { SectionTitle, SliderRow, SwitchRow } from "./ClipSheets";
@@ -37,16 +39,7 @@ export function DubbingSheet({ ctx }: { ctx: EditorCtx }) {
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const res = await fetch("/api/edge-tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice, rate }),
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || "تولید صدای دوبله ناموفق بود");
-        }
-        return await res.blob();
+        return await aiEdgeTtsBlob(text, voice, rate);
       } catch (e) {
         lastErr = e;
         await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
@@ -103,24 +96,14 @@ export function DubbingSheet({ ctx }: { ctx: EditorCtx }) {
       try {
         if (translate) {
           ctx.setBusy({ label: `آماده‌سازی متن (${DUB_LANGS.find((l) => l.code === lang)?.label ?? lang}) با AI…`, progress: 0.45 });
-          const res = await fetch("/api/translate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode, target: lang, segments: texts }),
-          });
-          const j = await res.json();
-          if (!res.ok) throw new Error(j.error || "پردازش متن ناموفق بود");
-          texts = (j.segments as string[]).map((t, i) => t || texts[i]);
+          const j = await aiTranslate({ mode, target: lang, segments: texts, ...byoCreds() });
+          if (j.error || !j.segments) throw new Error(j.error || "پردازش متن ناموفق بود");
+          texts = j.segments.map((t, i) => t || texts[i]);
         } else {
           ctx.setBusy({ label: "اصلاح و روان‌سازی متن با AI…", progress: 0.45 });
-          const res = await fetch("/api/translate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode: "fix", target: "fa", segments: texts }),
-          });
-          const j = await res.json();
-          if (res.ok && Array.isArray(j.segments)) {
-            texts = (j.segments as string[]).map((t, i) => t || texts[i]);
+          const j = await aiTranslate({ mode: "fix", target: "fa", segments: texts, ...byoCreds() });
+          if (!j.error && Array.isArray(j.segments)) {
+            texts = j.segments.map((t, i) => t || texts[i]);
           }
         }
       } catch {
