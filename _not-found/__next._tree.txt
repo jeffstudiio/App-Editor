@@ -1,0 +1,2 @@
+:HL["/App-Editor/_next/static/chunks/a47dc8c2f631738f.css","style"]
+0:{"buildId":"bSgI7HhWZWTzWdkrNtc0g","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"/_not-found","paramType":null,"paramKey":"/_not-found","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}

@@ -1,0 +1,722 @@
+{
+ "version": "1.0.0",
+ "count": 7,
+ "templates": [
+  {
+   "id": "typo-kinetic-base",
+   "name": "کینتیک بیس",
+   "en": "KINETIC BASE",
+   "cat": "typo",
+   "tags": [
+    "کینتیک",
+    "متن",
+    "ضرب"
+   ],
+   "aspect": "9:16",
+   "desc": "چهار جملهٔ پشت‌سرهم روی ضرب؛ پایهٔ کینتیک تایپوگرافی",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "بیت با ضرب مشخص"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "زندگی",
+     "size": "xl",
+     "y": 0.44
+    },
+    {
+     "id": "t2",
+     "sample": "کوتاه‌تر",
+     "size": "xl",
+     "y": 0.44
+    },
+    {
+     "id": "t3",
+     "sample": "از آن‌ست",
+     "size": "xl",
+     "y": 0.44
+    },
+    {
+     "id": "t4",
+     "sample": "که فکر می‌کنی",
+     "size": "lg",
+     "y": 0.44
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "art": [
+      "#1d1817",
+      "#262020"
+     ],
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "art": [
+      "#9c453d",
+      "#6f2f2a"
+     ],
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "art": [
+      "#c16a52",
+      "#9c453d"
+     ],
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "breathe",
+     "art": [
+      "#f1e9e4",
+      "#e0a78f"
+     ],
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t4",
+       "anim": "popIn",
+       "at": 0.15,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    }
+   ],
+   "bpm": 120,
+   "art": {
+    "from": "#c16a52",
+    "to": "#1d1817",
+    "emoji": "🔤"
+   },
+   "featured": true
+  },
+  {
+   "id": "typo-hiphop",
+   "name": "هیپ‌هاپ تایپ",
+   "en": "HIPHOP TYPE",
+   "cat": "typo",
+   "tags": [
+    "هیپ‌هاپ",
+    "لرزش",
+    "خیابان"
+   ],
+   "aspect": "9:16",
+   "desc": "متن‌های لرزان با گلیچ و رنگ قرمز؛ سبک خیابانی و راپ",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "بوم‌بپ"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "جریان رو",
+     "size": "xl",
+     "y": 0.42
+    },
+    {
+     "id": "t2",
+     "sample": "عوض کن",
+     "size": "xl",
+     "y": 0.42
+    },
+    {
+     "id": "t3",
+     "sample": "همین حالا",
+     "size": "lg",
+     "y": 0.42
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.4,
+     "motion": "zoomPulse",
+     "art": [
+      "#0e0b0b",
+      "#1d1817"
+     ],
+     "out": "glitchTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "shakeIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 1.4,
+     "motion": "zoomPulse",
+     "art": [
+      "#6f2f2a",
+      "#3a322e"
+     ],
+     "out": "glitchTr",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "glitchIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "zoomPulse",
+     "art": [
+      "#e0574a",
+      "#6f2f2a"
+     ],
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "stampIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.42
+      }
+     ]
+    }
+   ],
+   "bpm": 92,
+   "art": {
+    "from": "#e0574a",
+    "to": "#1d1817",
+    "emoji": "🎤"
+   }
+  },
+  {
+   "id": "typo-quote-minimal",
+   "name": "نقل‌قول مینیمال",
+   "en": "MIN QUOTE",
+   "cat": "typo",
+   "tags": [
+    "نقل‌قول",
+    "مینیمال",
+    "کرم"
+   ],
+   "aspect": "1:1",
+   "desc": "پست نقل‌قولی کرم با حروف‌چینی باز؛ تمیز و ادیتوریال",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "پیانوی ملایم"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "«سادگی، نهایتِ پیچیدگی است.»",
+     "size": "md",
+     "y": 0.44
+    },
+    {
+     "id": "t2",
+     "sample": "— لئوناردو داوینچی",
+     "size": "sm",
+     "y": 0.56
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.4,
+     "motion": "hold",
+     "art": [
+      "#f1e9e4",
+      "#f0ebe8"
+     ],
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.5,
+       "dur": 1.1,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "hold",
+     "art": [
+      "#e0a78f",
+      "#f1e9e4"
+     ],
+     "out": "dipWhite",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.7,
+       "y": 0.56
+      },
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.6,
+       "y": 0.44
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#f1e9e4",
+    "to": "#c16a52",
+    "emoji": "🕊️"
+   }
+  },
+  {
+   "id": "typo-neon-city",
+   "name": "نئون تایپ",
+   "en": "NEON TYPE",
+   "cat": "typo",
+   "tags": [
+    "نئون",
+    "شب",
+    "متن"
+   ],
+   "aspect": "9:16",
+   "desc": "جمله‌های نئونی با فلیکر واقعی لامپ؛ شب و سایبر",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "سینث‌ویو"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "OPEN",
+     "size": "xl",
+     "y": 0.4
+    },
+    {
+     "id": "t2",
+     "sample": "ALL NIGHT",
+     "size": "lg",
+     "y": 0.52
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "breathe",
+     "art": [
+      "#0e0b0b",
+      "#1d1817"
+     ],
+     "out": "flashTr",
+     "fx": [
+      "scan"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "neonOn",
+       "at": 0.3,
+       "dur": 0.9,
+       "y": 0.4
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "breathe",
+     "art": [
+      "#1d1817",
+      "#6f2f2a"
+     ],
+     "out": "dipBlack",
+     "fx": [
+      "scan"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "neonOn",
+       "at": 0.4,
+       "dur": 0.9,
+       "y": 0.52
+      },
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.4
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#1d1817",
+    "to": "#c16a52",
+    "emoji": "🅰️"
+   }
+  },
+  {
+   "id": "typo-glitch-news",
+   "name": "خبری گلیچ",
+   "en": "NEWS GLITCH",
+   "cat": "typo",
+   "tags": [
+    "خبر",
+    "گلیچ",
+    "تیز"
+   ],
+   "aspect": "16:9",
+   "desc": "تیتر خبری با گلیچ تلویزیونی و نوار پایین؛ اطلاع‌رسانی تند",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "سوت خبری"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "خبر فوری",
+     "size": "md",
+     "y": 0.36,
+     "accent": "#e0574a"
+    },
+    {
+     "id": "t2",
+     "sample": "نسخهٔ جدید اپ منتشر شد",
+     "size": "lg",
+     "y": 0.5
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.8,
+     "motion": "hold",
+     "art": [
+      "#0e0b0b",
+      "#262020"
+     ],
+     "out": "glitchTr",
+     "fx": [
+      "scan"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "glitchIn",
+       "at": 0.15,
+       "dur": 0.5,
+       "y": 0.36
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "hold",
+     "art": [
+      "#262020",
+      "#3a322e"
+     ],
+     "out": "dipBlack",
+     "fx": [
+      "scan",
+      "letterbox"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "wipeUp",
+       "at": 0.3,
+       "dur": 0.7,
+       "y": 0.5
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#3a322e",
+    "to": "#e0574a",
+    "emoji": "📡"
+   }
+  },
+  {
+   "id": "typo-motivation",
+   "name": "انگیزشی درشت",
+   "en": "BIG MOTIV",
+   "cat": "typo",
+   "tags": [
+    "انگیزشی",
+    "درشت",
+    "موتور"
+   ],
+   "aspect": "9:16",
+   "desc": "کلمات تک‌کلمهٔ درشت با مهرشدن روی ضرب؛ ریلز انگیزشی",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "ارکسترال برانگیزاننده"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "شروع",
+     "size": "xl",
+     "y": 0.44
+    },
+    {
+     "id": "t2",
+     "sample": "تلاش",
+     "size": "xl",
+     "y": 0.44
+    },
+    {
+     "id": "t3",
+     "sample": "برد",
+     "size": "xl",
+     "y": 0.44
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.1,
+     "motion": "zoomPulse",
+     "art": [
+      "#1d1817",
+      "#6f2f2a"
+     ],
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "stampIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 1.1,
+     "motion": "zoomPulse",
+     "art": [
+      "#9c453d",
+      "#1d1817"
+     ],
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 1.9,
+     "motion": "dollyIn",
+     "art": [
+      "#c16a52",
+      "#9c453d"
+     ],
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "zoomText",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    }
+   ],
+   "bpm": 128,
+   "art": {
+    "from": "#6f2f2a",
+    "to": "#e0a78f",
+    "emoji": "🔥"
+   }
+  },
+  {
+   "id": "typo-crazy-fast",
+   "name": "تایپ دیوانه",
+   "en": "CRAZY TYPE",
+   "cat": "typo",
+   "tags": [
+    "سریع",
+    "ترند",
+    "سواییپ"
+   ],
+   "aspect": "9:16",
+   "desc": "سواییپ‌های تند متن با رنگ‌های عوضی؛ سبک ترند توکیو",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "دنس ژاپنی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "ببین",
+     "size": "xl",
+     "y": 0.42
+    },
+    {
+     "id": "t2",
+     "sample": "اینو",
+     "size": "xl",
+     "y": 0.42
+    },
+    {
+     "id": "t3",
+     "sample": "حس کن",
+     "size": "xl",
+     "y": 0.42
+    },
+    {
+     "id": "t4",
+     "sample": "حالا بساز",
+     "size": "lg",
+     "y": 0.42
+    }
+   ],
+   "scenes": [
+    {
+     "d": 0.8,
+     "motion": "zoomPulse",
+     "art": [
+      "#f1e9e4",
+      "#e0a78f"
+     ],
+     "out": "whipL",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.05,
+       "dur": 0.4,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 0.8,
+     "motion": "zoomPulse",
+     "art": [
+      "#c16a52",
+      "#f1e9e4"
+     ],
+     "out": "whipR",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "popIn",
+       "at": 0.05,
+       "dur": 0.4,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 0.8,
+     "motion": "zoomPulse",
+     "art": [
+      "#1d1817",
+      "#e0574a"
+     ],
+     "out": "whipL",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "popIn",
+       "at": 0.05,
+       "dur": 0.4,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 1.4,
+     "motion": "breathe",
+     "art": [
+      "#9c453d",
+      "#c16a52"
+     ],
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t4",
+       "anim": "bounceIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.42
+      }
+     ]
+    }
+   ],
+   "bpm": 150,
+   "art": {
+    "from": "#e0a78f",
+    "to": "#e0574a",
+    "emoji": "🌀"
+   }
+  }
+ ]
+}

@@ -1,0 +1,869 @@
+{
+ "version": "1.0.0",
+ "count": 8,
+ "templates": [
+  {
+   "id": "intro-minimal-arch",
+   "name": "معماری مینیمال",
+   "en": "MINIMAL ARCH",
+   "cat": "intro",
+   "tags": [
+    "لوگو",
+    "مینیمال",
+    "معماری",
+    "کرم"
+   ],
+   "aspect": "16:9",
+   "desc": "اینترو آرام و معماران با کرم و تراکوتا؛ مناسب پرتفولیو و برند",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "لوگو یا عکس شاخص"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "آمبیانس مینیمال"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "استودیو تو",
+     "size": "xl",
+     "y": 0.42
+    },
+    {
+     "id": "t2",
+     "sample": "DESIGN STUDIO",
+     "size": "sm",
+     "y": 0.52
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.6,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.3
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "trackIn",
+       "at": 0.3,
+       "dur": 0.8
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "fx": [
+      "vignette",
+      "letterbox"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2
+      },
+      {
+       "ref": "t2",
+       "anim": "trackIn",
+       "at": 0.5
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#f1e9e4",
+    "to": "#c16a52",
+    "emoji": "🏛️"
+   },
+   "featured": true
+  },
+  {
+   "id": "intro-neon-logo",
+   "name": "نئون لوگو",
+   "en": "NEON LOGO",
+   "cat": "intro",
+   "tags": [
+    "نئون",
+    "شب",
+    "گیمینگ",
+    "لوگو"
+   ],
+   "aspect": "9:16",
+   "desc": "لوگوی تو با روشن‌شدن نئونی و گلیچ؛ حال‌وهوای شب و گیمینگ",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "لوگو تیره"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "پس‌زمینه شهر شب"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "بیت الکترونیک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "CHANNEL NAME",
+     "size": "lg",
+     "y": 0.68
+    },
+    {
+     "id": "t2",
+     "sample": "پخش زنده هر شب",
+     "size": "sm",
+     "y": 0.78
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.2,
+     "motion": "sweepFocus",
+     "slot": "m2",
+     "out": "glitchTr",
+     "fx": [
+      "vignette"
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "glitchTr",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "neonOn",
+       "at": 0.25,
+       "dur": 0.7,
+       "y": 0.66
+      }
+     ]
+    },
+    {
+     "d": 1.4,
+     "motion": "handheld",
+     "slot": "m2",
+     "out": "flashTr",
+     "fx": [
+      "scan"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "glitchIn",
+       "at": 0.3,
+       "dur": 0.5,
+       "y": 0.77
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "dipBlack",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "neonOn",
+       "at": 0.15,
+       "dur": 0.6,
+       "y": 0.66
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.6,
+       "dur": 0.5,
+       "y": 0.77
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#1d1817",
+    "to": "#c16a52",
+    "emoji": "💜"
+   },
+   "featured": true
+  },
+  {
+   "id": "intro-cinema-studio",
+   "name": "استودیو سینمایی",
+   "en": "CINEMA STUDIO",
+   "cat": "intro",
+   "tags": [
+    "سینمایی",
+    "تیزر",
+    "فیلم"
+   ],
+   "aspect": "16:9",
+   "desc": "پردهٔ سینما، نوار سیاه و ظهور برند؛ تیزر حرفه‌ای فیلم و یوتیوب",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "ویدئو پس‌زمینه"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "لوگو"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "برامس سینمایی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "یک قصهٔ تازه",
+     "size": "lg",
+     "y": 0.46
+    },
+    {
+     "id": "t2",
+     "sample": "به‌زودی",
+     "size": "md",
+     "y": 0.58
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "dipBlack",
+     "fx": [
+      "letterbox",
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.5,
+       "dur": 0.7,
+       "y": 0.46
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "hold",
+     "slot": "m2",
+     "out": "filmBurnTr",
+     "fx": [
+      "letterbox"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "zoomText",
+       "at": 0.4,
+       "dur": 0.6,
+       "y": 0.58
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "letterbox",
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "blurIn",
+       "at": 0.4,
+       "dur": 0.8,
+       "y": 0.46
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 1,
+       "dur": 0.6,
+       "y": 0.58
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#262020",
+    "to": "#6f2f2a",
+    "emoji": "🎞️"
+   }
+  },
+  {
+   "id": "intro-glitch-brand",
+   "name": "گلیچ برند",
+   "en": "GLITCH BRAND",
+   "cat": "intro",
+   "tags": [
+    "گلیچ",
+    "تکنولوژی",
+    "پرانرژی"
+   ],
+   "aspect": "1:1",
+   "desc": "ورود پرانرژی برند با گلیچ و پانچ ضربی؛ برای تکنولوژی و اسپرت",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "لوگو"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "عکس بافت شهری"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "الکترو پرضرب"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "BRAND",
+     "size": "xl",
+     "y": 0.44
+    },
+    {
+     "id": "t2",
+     "sample": "نسخهٔ جدید",
+     "size": "sm",
+     "y": 0.56
+    }
+   ],
+   "scenes": [
+    {
+     "d": 0.9,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "glitchTr",
+     "fx": [
+      "scan"
+     ]
+    },
+    {
+     "d": 0.9,
+     "motion": "handheld",
+     "slot": "m1",
+     "out": "glitchTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "shakeIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 0.9,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "flashTr",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "popIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.56
+      }
+     ]
+    },
+    {
+     "d": 1.4,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.44
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.5,
+       "dur": 0.5,
+       "y": 0.56
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#3a322e",
+    "to": "#c16a52",
+    "emoji": "⚡️"
+   }
+  },
+  {
+   "id": "intro-cream-editorial",
+   "name": "کرم ادیتوریال",
+   "en": "CREAM EDITORIAL",
+   "cat": "intro",
+   "tags": [
+    "مینیمال",
+    "فشن",
+    "شیک"
+   ],
+   "aspect": "4:5",
+   "desc": "اینترو شیک کرم با حروف‌چینی باز؛ برند فشن و زیبایی",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "شات فشن"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "پیانوی ملایم"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "ATELIER",
+     "size": "xl",
+     "y": 0.4
+    },
+    {
+     "id": "t2",
+     "sample": "کالکشن بهار",
+     "size": "sm",
+     "y": 0.5
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.8,
+     "motion": "sweepFocus",
+     "slot": "m1",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.4,
+       "dur": 0.9,
+       "y": 0.4
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "panL",
+     "slot": "m1",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.5,
+       "dur": 0.7,
+       "y": 0.52
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "kenburnsOut",
+     "slot": "m1",
+     "out": "dipWhite",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.3,
+       "dur": 0.7,
+       "y": 0.4
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.7,
+       "dur": 0.6,
+       "y": 0.52
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#f1e9e4",
+    "to": "#e0a78f",
+    "emoji": "🕊️"
+   }
+  },
+  {
+   "id": "intro-motion-montage",
+   "name": "مونتاژ معرفی",
+   "en": "MOTION MONTAGE",
+   "cat": "intro",
+   "tags": [
+    "مونتاژ",
+    "انرژی",
+    "پرتره"
+   ],
+   "aspect": "9:16",
+   "desc": "چهار کات سریع از کارهایت و بسته‌شدن روی لوگو؛ معرفی پرتره",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "کلیپ ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "video",
+     "label": "کلیپ ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "لوگو"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "بیت با ضرب مشخص"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "کارهای من",
+     "size": "lg",
+     "y": 0.14
+    }
+   ],
+   "scenes": [
+    {
+     "d": 0.8,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.14
+      }
+     ]
+    },
+    {
+     "d": 0.8,
+     "motion": "panR",
+     "slot": "m2",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 0.8,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "whipL"
+    },
+    {
+     "d": 0.8,
+     "motion": "handheld",
+     "slot": "m2",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.6,
+     "motion": "hold",
+     "slot": "m3",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "zoomText",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.14
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#c16a52",
+    "to": "#6f2f2a",
+    "emoji": "🌀"
+   }
+  },
+  {
+   "id": "intro-typography-studio",
+   "name": "تایپوگرافی استودیو",
+   "en": "TYPE STUDIO",
+   "cat": "intro",
+   "tags": [
+    "تایپوگرافی",
+    "متن",
+    "ادیتوریال"
+   ],
+   "aspect": "16:9",
+   "desc": "نام برند درشت با حروف‌چینی باز و محو تدریجی؛ بدون عکس",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "audio",
+     "label": "پیانو مینیمال"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "JEFF STUDIO",
+     "size": "xl",
+     "y": 0.46
+    },
+    {
+     "id": "t2",
+     "sample": "معماری و بصری‌سازی",
+     "size": "sm",
+     "y": 0.58
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.4,
+     "motion": "hold",
+     "art": [
+      "#f1e9e4",
+      "#e0a78f"
+     ],
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.3,
+       "dur": 1,
+       "y": 0.46
+      }
+     ]
+    },
+    {
+     "d": 1.4,
+     "motion": "hold",
+     "art": [
+      "#1d1817",
+      "#3a322e"
+     ],
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.6,
+       "y": 0.46
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.6,
+       "dur": 0.6,
+       "y": 0.58
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "hold",
+     "art": [
+      "#262020",
+      "#9c453d"
+     ],
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "blurIn",
+       "at": 0.2,
+       "dur": 0.8,
+       "y": 0.46
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#e0a78f",
+    "to": "#c16a52",
+    "emoji": "🔤"
+   }
+  },
+  {
+   "id": "intro-luxury-gold",
+   "name": "لاکچری طلایی",
+   "en": "LUXE GOLD",
+   "cat": "intro",
+   "tags": [
+    "لاکچری",
+    "جواهرات",
+    "لوکس"
+   ],
+   "aspect": "9:16",
+   "desc": "ظهور لوکس برند با نور سوئیپ و کن‌برنز؛ جواهر و ساعت",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "محصول لوکس"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "لوگو"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "ارکسترال شیک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "LUXE",
+     "size": "xl",
+     "y": 0.38
+    },
+    {
+     "id": "t2",
+     "sample": "ساعت و جواهر",
+     "size": "sm",
+     "y": 0.49
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.6,
+     "motion": "sweepFocus",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.4,
+       "dur": 0.9,
+       "y": 0.38
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "filmBurnTr",
+     "fx": [
+      "leak",
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.6,
+       "y": 0.49
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "hold",
+     "slot": "m2",
+     "out": "fade",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.7,
+       "y": 0.38
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.6,
+       "dur": 0.6,
+       "y": 0.49
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#6f2f2a",
+    "to": "#e0a78f",
+    "emoji": "💍"
+   }
+  }
+ ]
+}

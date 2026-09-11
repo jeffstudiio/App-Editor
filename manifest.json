@@ -1,0 +1,40 @@
+{
+  "name": "استودیو خلاق",
+  "short_name": "استودیو",
+  "description": "همه ابزارهای خلاقیت در یک اپ: دستیار هنری هوش مصنوعی، اکسپلور ایده‌ها، زیرنویس‌ساز حرفه‌ای و استودیو طراحی استوری.",
+  "dir": "rtl",
+  "lang": "fa",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1d1817",
+  "theme_color": "#1d1817",
+  "categories": [
+    "graphics",
+    "photo",
+    "video",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

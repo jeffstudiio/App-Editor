@@ -1,0 +1,1434 @@
+{
+ "version": "1.0.0",
+ "count": 13,
+ "templates": [
+  {
+   "id": "story-daily-motion",
+   "name": "استوری روز",
+   "en": "DAILY STORY",
+   "cat": "story",
+   "tags": [
+    "روزمره",
+    "استوری",
+    "موشن"
+   ],
+   "aspect": "9:16",
+   "desc": "سه اسلاید موشن‌دار روزمره با متن درشت؛ سریع آماده می‌شود",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "عکس ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "عکس ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "عکس ۳"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "موزیک استوری"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "امروز…",
+     "size": "lg",
+     "y": 0.16
+    },
+    {
+     "id": "t2",
+     "sample": "ادامه دارد 👆",
+     "size": "sm",
+     "y": 0.85
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.2,
+     "motion": "panD",
+     "slot": "m1",
+     "out": "wipeUpTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.16
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "panU",
+     "slot": "m2",
+     "out": "wipeUpTr"
+    },
+    {
+     "d": 2.2,
+     "motion": "kenburnsIn",
+     "slot": "m3",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "popIn",
+       "at": 0.3,
+       "dur": 0.5,
+       "y": 0.85
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#c16a52",
+    "to": "#e0a78f",
+    "emoji": "📱"
+   },
+   "featured": true
+  },
+  {
+   "id": "story-quote-motion",
+   "name": "نقل‌قول متحرک",
+   "en": "QUOTE MOTION",
+   "cat": "story",
+   "tags": [
+    "نقل‌قول",
+    "مینیمال",
+    "متن"
+   ],
+   "aspect": "9:16",
+   "desc": "متن نقل‌قول با تایپ‌رایتر و پس‌زمینهٔ آرام؛ ادیتوریال و مینیمال",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "بافت پس‌زمینه"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "پیانوی محو"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "«هر چیز خوبی زمان می‌برد.»",
+     "size": "lg",
+     "y": 0.42
+    },
+    {
+     "id": "t2",
+     "sample": "— نویسنده",
+     "size": "sm",
+     "y": 0.56
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.6,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "typewriter",
+       "at": 0.4,
+       "dur": 1.2,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 2.6,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.56
+      },
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 1.2,
+       "dur": 0.8,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "hold",
+     "art": [
+      "#1d1817",
+      "#262020"
+     ],
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "blurIn",
+       "at": 0.2,
+       "dur": 0.8,
+       "y": 0.42
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#f1e9e4",
+    "to": "#a89c95",
+    "emoji": "🖤"
+   }
+  },
+  {
+   "id": "story-sale-motion",
+   "name": "استوری فروش",
+   "en": "SALE STORY",
+   "cat": "story",
+   "tags": [
+    "فروش",
+    "تخفیف",
+    "شاپ"
+   ],
+   "aspect": "9:16",
+   "desc": "تخفیف درشت با پالس ضرب و متن قیمت؛ برای فروشگاه اینستاگرام",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "محصول"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "محصول زاویهٔ ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "بیت آپتمیک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "تخفیف ویژهٔ امروز",
+     "size": "lg",
+     "y": 0.18
+    },
+    {
+     "id": "t2",
+     "sample": "٪۳۰",
+     "size": "xl",
+     "y": 0.42,
+     "accent": "#e0a78f"
+    },
+    {
+     "id": "t3",
+     "sample": "برای سفارش، پیام بده",
+     "size": "sm",
+     "y": 0.82
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.8,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.18
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.42
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "kenburnsIn",
+     "slot": "m2",
+     "out": "flashTr",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "popIn",
+       "at": 0.25,
+       "dur": 0.5,
+       "y": 0.82
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "hold",
+     "slot": "m2",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.45,
+       "y": 0.42
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#9c453d",
+    "to": "#e0574a",
+    "emoji": "🏷️"
+   },
+   "featured": true
+  },
+  {
+   "id": "story-news-motion",
+   "name": "استوری خبری",
+   "en": "NEWS STORY",
+   "cat": "story",
+   "tags": [
+    "خبر",
+    "اعلام",
+    "رسمی"
+   ],
+   "aspect": "9:16",
+   "desc": "اعلام رسمی با نوار تیتر و ترنزیشن محکم؛ مناسب سازمان‌ها",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "تصویر خبر"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "لوگو"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "سوت خبری ملایم"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "اعلامیهٔ رسمی",
+     "size": "md",
+     "y": 0.2
+    },
+    {
+     "id": "t2",
+     "sample": "جزئیات در ادامه",
+     "size": "lg",
+     "y": 0.45
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "coldReveal",
+     "slot": "m1",
+     "out": "dipBlack",
+     "fx": [
+      "letterbox"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.2
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "letterbox"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "wipeUp",
+       "at": 0.3,
+       "dur": 0.7,
+       "y": 0.45
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "hold",
+     "slot": "m2",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.2
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#262020",
+    "to": "#6f2f2a",
+    "emoji": "📰"
+   }
+  },
+  {
+   "id": "story-recap-motion",
+   "name": "رکاپ هفته",
+   "en": "WEEK RECAP",
+   "cat": "story",
+   "tags": [
+    "رکاپ",
+    "کالج",
+    "خاطره"
+   ],
+   "aspect": "9:16",
+   "desc": "چهار لحظهٔ هفته با کات‌های زنده و متن تاریخ؛ رکاپ شخصی",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "دوشنبه"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "سه‌شنبه"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "پنج‌شنبه"
+    },
+    {
+     "id": "m4",
+     "kind": "image",
+     "label": "جمعه"
+    },
+    {
+     "id": "m5",
+     "kind": "audio",
+     "label": "ایندی شاد"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "هفته‌ای که گذشت",
+     "size": "lg",
+     "y": 0.14
+    },
+    {
+     "id": "t2",
+     "sample": "دوشنبه",
+     "size": "sm",
+     "y": 0.84
+    },
+    {
+     "id": "t3",
+     "sample": "جمعه",
+     "size": "sm",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.6,
+     "motion": "panL",
+     "slot": "m1",
+     "out": "slideL",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.15,
+       "dur": 0.5,
+       "y": 0.14
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "panR",
+     "slot": "m2",
+     "out": "slideR"
+    },
+    {
+     "d": 1.6,
+     "motion": "handheld",
+     "slot": "m3",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.8,
+     "motion": "kenburnsIn",
+     "slot": "m4",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.84
+      },
+      {
+       "ref": "t3",
+       "anim": "fadeIn",
+       "at": 0.9,
+       "dur": 0.5,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#e0a78f",
+    "to": "#c16a52",
+    "emoji": "📅"
+   }
+  },
+  {
+   "id": "story-fashion-motion",
+   "name": "استوری فشن",
+   "en": "FASHION STORY",
+   "cat": "story",
+   "tags": [
+    "فشن",
+    "استایل",
+    "شیک"
+   ],
+   "aspect": "9:16",
+   "desc": "پوش‌بوک متحرک با پن‌های آرام و متن ادیتوریال",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "شات تمام‌قد"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "کلوزآپ تِکسچر"
+    },
+    {
+     "id": "m3",
+     "kind": "audio",
+     "label": "الکترو-شیک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "SS COLLECTION",
+     "size": "md",
+     "y": 0.12
+    },
+    {
+     "id": "t2",
+     "sample": "استایل امروز",
+     "size": "lg",
+     "y": 0.8
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.2,
+     "motion": "panU",
+     "slot": "m1",
+     "out": "wipeUpTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "trackIn",
+       "at": 0.35,
+       "dur": 0.9,
+       "y": 0.12
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "blurIn",
+       "at": 0.3,
+       "dur": 0.7,
+       "y": 0.8
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "kenburnsOut",
+     "slot": "m1",
+     "out": "dipWhite"
+    }
+   ],
+   "art": {
+    "from": "#f1e9e4",
+    "to": "#c16a52",
+    "emoji": "👗"
+   }
+  },
+  {
+   "id": "story-poll-motion",
+   "name": "استوری تعاملی",
+   "en": "POLL STORY",
+   "cat": "story",
+   "tags": [
+    "تعامل",
+    "سؤال",
+    "باکس"
+   ],
+   "aspect": "9:16",
+   "desc": "سؤال بزرگ با نئون و جای خالی برای استیکر اینستاگرام",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "پس‌زمینه"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "بیت سبک"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "تو کدوم رو می‌زنی؟",
+     "size": "xl",
+     "y": 0.38
+    },
+    {
+     "id": "t2",
+     "sample": "استیکر نظرسنجی رو بذار 👇",
+     "size": "sm",
+     "y": 0.68
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.4,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "glitchTr",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "neonOn",
+       "at": 0.3,
+       "dur": 0.8,
+       "y": 0.38
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.6,
+       "y": 0.68
+      },
+      {
+       "ref": "t1",
+       "anim": "neonOn",
+       "at": 0.2,
+       "dur": 0.6,
+       "y": 0.38
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#1d1817",
+    "to": "#9c453d",
+    "emoji": "🗳️"
+   }
+  },
+  {
+   "id": "story-estate",
+   "name": "ویلا و املاک",
+   "en": "ESTATE TOUR",
+   "cat": "story",
+   "tags": [
+    "املاک",
+    "ویلا",
+    "معماری",
+    "بازدید"
+   ],
+   "aspect": "9:16",
+   "desc": "تور سه‌نمای ویلا با پن‌های آهسته و CTA رزرو بازدید",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "نمای بیرونی"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "نشیمن داخلی"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "استخر یا حیاط"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "لو-فای لاکچری"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "ویلای رویایی تو",
+     "size": "xl",
+     "y": 0.18
+    },
+    {
+     "id": "t2",
+     "sample": "۱۲۰ متر • دو خوابه",
+     "size": "sm",
+     "y": 0.3
+    },
+    {
+     "id": "t3",
+     "sample": "رزرو بازدید: ۰۹۱۲···",
+     "size": "md",
+     "y": 0.84,
+     "accent": "#e0a78f"
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.4,
+     "motion": "panR",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.7,
+       "y": 0.18
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "fade",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "slideSide",
+       "at": 0.35,
+       "dur": 0.6,
+       "y": 0.3
+      }
+     ]
+    },
+    {
+     "d": 2.4,
+     "motion": "kenburnsIn",
+     "slot": "m3",
+     "out": "dipBlack",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.7,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "look": "warmglow",
+   "art": {
+    "from": "#3a322e",
+    "to": "#e0a78f",
+    "emoji": "🏡"
+   },
+   "featured": true
+  },
+  {
+   "id": "story-cafe-intro",
+   "name": "کافه و رستوران",
+   "en": "CAFE INTRO",
+   "cat": "story",
+   "tags": [
+    "کافه",
+    "رستوران",
+    "غذا",
+    "معرفی"
+   ],
+   "aspect": "9:16",
+   "desc": "کات‌های نزدیک غذا و فضا با پالس ضرب؛ اشتهاآور",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "فضای کافه"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "غذای شاخص"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "نوشیدنی یا دسر"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "بیت آروم آپ‌تمپو"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "تازه رسید ☕️",
+     "size": "xl",
+     "y": 0.2
+    },
+    {
+     "id": "t2",
+     "sample": "هر روز ۸ تا ۱۱ شب",
+     "size": "sm",
+     "y": 0.82
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.4,
+     "motion": "dollyIn",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.15,
+       "dur": 0.5,
+       "y": 0.2
+      }
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "zoomPulse",
+     "slot": "m2",
+     "out": "zoomPunch",
+     "fx": [
+      "vignette"
+     ]
+    },
+    {
+     "d": 1.6,
+     "motion": "panL",
+     "slot": "m3",
+     "out": "fade",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.6,
+       "y": 0.82
+      }
+     ]
+    },
+    {
+     "d": 1.8,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "blurIn",
+       "at": 0.3,
+       "dur": 0.7,
+       "y": 0.2
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#6f2f2a",
+    "to": "#c16a52",
+    "emoji": "☕️"
+   }
+  },
+  {
+   "id": "story-gym",
+   "name": "باشگاه و فیتنس",
+   "en": "GYM STORY",
+   "cat": "story",
+   "tags": [
+    "فیتنس",
+    "باشگاه",
+    "ورزش",
+    "انرژی"
+   ],
+   "aspect": "9:16",
+   "desc": "کات‌های سریع تمرین روی ضرب؛ هیجان عضویت باشگاه",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "video",
+     "label": "تمرین وزنه"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "عکس حرکت"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "فضای باشگاه"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "بیت پرانرژی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "از امروز شروع کن 💪",
+     "size": "xl",
+     "y": 0.16
+    },
+    {
+     "id": "t2",
+     "sample": "مشاورهٔ رایگان اولین جلسه",
+     "size": "sm",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "fx": [
+      "vignette"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "shakeIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.16
+      }
+     ]
+    },
+    {
+     "d": 1.2,
+     "motion": "handheld",
+     "slot": "m2",
+     "out": "whipL"
+    },
+    {
+     "d": 1.4,
+     "motion": "dollyIn",
+     "slot": "m3",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 2,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "bounceIn",
+       "at": 0.25,
+       "dur": 0.6,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "bpm": 130,
+   "art": {
+    "from": "#262020",
+    "to": "#e0574a",
+    "emoji": "🏋️"
+   }
+  },
+  {
+   "id": "story-beauty",
+   "name": "کلینیک زیبایی",
+   "en": "BEAUTY CLINIC",
+   "cat": "story",
+   "tags": [
+    "زیبایی",
+    "کلینیک",
+    "پوست",
+    "قبل‌بعد"
+   ],
+   "aspect": "9:16",
+   "desc": "نمایش قبل و بعد با محوهای نرم؛ آرامش و اعتماد",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "فضای کلینیک"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "قبل"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "بعد"
+    },
+    {
+     "id": "m4",
+     "kind": "audio",
+     "label": "امبینت شیک آرام"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "درخشش پوست تو ✨",
+     "size": "lg",
+     "y": 0.18
+    },
+    {
+     "id": "t2",
+     "sample": "قبل",
+     "size": "sm",
+     "y": 0.44
+    },
+    {
+     "id": "t3",
+     "sample": "بعد",
+     "size": "sm",
+     "y": 0.44,
+     "accent": "#e0a78f"
+    },
+    {
+     "id": "t4",
+     "sample": "مشاورهٔ رایگان",
+     "size": "md",
+     "y": 0.84
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2.2,
+     "motion": "warmGlowIn",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "fadeUp",
+       "at": 0.4,
+       "dur": 0.7,
+       "y": 0.18
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "kenburnsIn",
+     "slot": "m2",
+     "out": "dipWhite",
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.3,
+       "dur": 0.6,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 2,
+     "motion": "kenburnsOut",
+     "slot": "m3",
+     "out": "fade",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "popIn",
+       "at": 0.2,
+       "dur": 0.5,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "breathe",
+     "slot": "m1",
+     "out": "dipBlack",
+     "fx": [
+      "leak"
+     ],
+     "texts": [
+      {
+       "ref": "t4",
+       "anim": "blurIn",
+       "at": 0.4,
+       "dur": 0.7,
+       "y": 0.84
+      }
+     ]
+    }
+   ],
+   "look": "warmglow",
+   "art": {
+    "from": "#f1e9e4",
+    "to": "#e0a78f",
+    "emoji": "💠"
+   }
+  },
+  {
+   "id": "story-five-products",
+   "name": "فروش ۵ محصول",
+   "en": "5 PRODUCTS",
+   "cat": "story",
+   "tags": [
+    "فروش",
+    "چندمحصولی",
+    "فروشگاه",
+    "حراج"
+   ],
+   "aspect": "9:16",
+   "desc": "پنج کات سریع روی ضرب برای پنج محصول؛ نمایشگر ویترین",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "محصول ۱"
+    },
+    {
+     "id": "m2",
+     "kind": "image",
+     "label": "محصول ۲"
+    },
+    {
+     "id": "m3",
+     "kind": "image",
+     "label": "محصول ۳"
+    },
+    {
+     "id": "m4",
+     "kind": "image",
+     "label": "محصول ۴"
+    },
+    {
+     "id": "m5",
+     "kind": "image",
+     "label": "محصول ۵"
+    },
+    {
+     "id": "m6",
+     "kind": "audio",
+     "label": "بیت ترند فروش"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "۵ پیشنهاد ویژه 🔥",
+     "size": "lg",
+     "y": 0.14
+    },
+    {
+     "id": "t2",
+     "sample": "۱",
+     "size": "md",
+     "y": 0.2,
+     "accent": "#e0a78f"
+    },
+    {
+     "id": "t3",
+     "sample": "۵۵٪ تخفیف آخر شب",
+     "size": "md",
+     "y": 0.85
+    }
+   ],
+   "scenes": [
+    {
+     "d": 1.2,
+     "motion": "zoomPulse",
+     "slot": "m1",
+     "out": "zoomPunch",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "popIn",
+       "at": 0.1,
+       "dur": 0.5,
+       "y": 0.14
+      },
+      {
+       "ref": "t2",
+       "anim": "stampIn",
+       "at": 0.15,
+       "dur": 0.4,
+       "y": 0.2
+      }
+     ]
+    },
+    {
+     "d": 1.2,
+     "motion": "panL",
+     "slot": "m2",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.2,
+     "motion": "panR",
+     "slot": "m3",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.2,
+     "motion": "dollyIn",
+     "slot": "m4",
+     "out": "zoomPunch"
+    },
+    {
+     "d": 1.2,
+     "motion": "kenburnsIn",
+     "slot": "m5",
+     "out": "whipR"
+    },
+    {
+     "d": 2,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "bounceIn",
+       "at": 0.25,
+       "dur": 0.6,
+       "y": 0.85
+      }
+     ]
+    }
+   ],
+   "bpm": 125,
+   "art": {
+    "from": "#9c453d",
+    "to": "#e0a78f",
+    "emoji": "🛒"
+   }
+  },
+  {
+   "id": "story-school-news",
+   "name": "اعلانات مدرسه",
+   "en": "SCHOOL NEWS",
+   "cat": "story",
+   "tags": [
+    "مدرسه",
+    "اعلانات",
+    "آموزش",
+    "اطلاعیه"
+   ],
+   "aspect": "9:16",
+   "desc": "تابلوی اعلانات متحرک با تایپ‌رایتر؛ اطلاعیهٔ مدرسه و آموزشگاه",
+   "slots": [
+    {
+     "id": "m1",
+     "kind": "image",
+     "label": "عکس مدرسه/کلاس"
+    },
+    {
+     "id": "m2",
+     "kind": "audio",
+     "label": "بیت ملایم آموزشی"
+    }
+   ],
+   "texts": [
+    {
+     "id": "t1",
+     "sample": "📢 اعلانات",
+     "size": "xl",
+     "y": 0.2
+    },
+    {
+     "id": "t2",
+     "sample": "جلسهٔ اولیه: ۲۵ شهریور، ساعت ۹",
+     "size": "md",
+     "y": 0.44
+    },
+    {
+     "id": "t3",
+     "sample": "به امید سالی پربار",
+     "size": "sm",
+     "y": 0.8
+    }
+   ],
+   "scenes": [
+    {
+     "d": 2,
+     "motion": "panD",
+     "slot": "m1",
+     "out": "wipeUpTr",
+     "texts": [
+      {
+       "ref": "t1",
+       "anim": "bounceIn",
+       "at": 0.2,
+       "dur": 0.6,
+       "y": 0.2
+      }
+     ]
+    },
+    {
+     "d": 2.8,
+     "motion": "kenburnsIn",
+     "slot": "m1",
+     "out": "fade",
+     "fx": [
+      "grain"
+     ],
+     "texts": [
+      {
+       "ref": "t2",
+       "anim": "typewriter",
+       "at": 0.4,
+       "dur": 1.4,
+       "y": 0.44
+      }
+     ]
+    },
+    {
+     "d": 2.2,
+     "motion": "hold",
+     "slot": "m1",
+     "out": "dipBlack",
+     "texts": [
+      {
+       "ref": "t3",
+       "anim": "fadeUp",
+       "at": 0.35,
+       "dur": 0.7,
+       "y": 0.8
+      },
+      {
+       "ref": "t2",
+       "anim": "fadeIn",
+       "at": 0.2,
+       "dur": 0.6,
+       "y": 0.44
+      }
+     ]
+    }
+   ],
+   "art": {
+    "from": "#3a322e",
+    "to": "#a89c95",
+    "emoji": "🏫"
+   }
+  }
+ ]
+}
